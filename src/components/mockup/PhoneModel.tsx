@@ -231,39 +231,62 @@ export function PhoneModel({
 
     modelGroup.children[0].position.sub(center);
 
-    // Replace the model's built-in screen wallpaper (the `screen.001` mesh) with
-    // the uploaded screenshot so it maps perfectly onto the real screen geometry
-    // (rounded corners / cutouts) via the model's own UVs. When no screenshot is
-    // provided, the model keeps its baked wallpaper.
-    if (texture) {
-      modelGroup.traverse((child: THREE.Object3D) => {
-        if (
-          child instanceof THREE.Mesh &&
-          /screen/.test(child.name.toLowerCase()) &&
-          !/glass|lens/.test(child.name.toLowerCase())
-        ) {
-          // The screen mesh is a flat plane (constant local X, varying in Y/Z),
-          // but its baked UVs are custom-fit to the original wallpaper and would
-          // tile/distort an arbitrary screenshot. Regenerate clean planar UVs so
-          // the screenshot maps 1:1 across the screen: U <- local Y (width),
-          // V <- local Z (height).
-          const geom = child.geometry.clone();
-          const pos = geom.attributes.position;
-          let xMin = Infinity;
-          let yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
-          for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-            if (x < xMin) xMin = x;
-            if (y < yMin) yMin = y; if (y > yMax) yMax = y;
-            if (z < zMin) zMin = z; if (z > zMax) zMax = z;
-          }
-          const ySpan = yMax - yMin || 1;
-          const zSpan = zMax - zMin || 1;
-          // Planar UV: U <- local Y (width, reversed to avoid mirror), V <- local Z (height).
-          const planarUV = (y: number, z: number): [number, number] => [
-            (yMax - y) / ySpan,
-            (z - zMin) / zSpan,
-          ];
+    // Always fill the dynamic-island cutout in the screen mesh so the hole
+    // (left by removing the island geometry from the GLB) never shows through
+    // to the back shell — whether a screenshot is uploaded or not.
+    modelGroup.traverse((child: THREE.Object3D) => {
+      if (
+        child instanceof THREE.Mesh &&
+        /screen/.test(child.name.toLowerCase()) &&
+        !/glass|lens/.test(child.name.toLowerCase())
+      ) {
+        const geom = child.geometry.clone();
+        const pos = geom.attributes.position;
+        let xMin = Infinity;
+        let yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+          if (x < xMin) xMin = x;
+          if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+          if (z < zMin) zMin = z; if (z > zMax) zMax = z;
+        }
+        const ySpan = yMax - yMin || 1;
+        const zSpan = zMax - zMin || 1;
+        const planarUV = (y: number, z: number): [number, number] => [
+          (yMax - y) / ySpan,
+          (z - zMin) / zSpan,
+        ];
+
+        // Always punch a filled quad over the island cutout. When a screenshot
+        // is uploaded it shares the screenshot material so the pixels are
+        // seamless; otherwise it uses a solid dark tone that blends with the
+        // edges of the cutout.
+        const yPatch0 = -0.14, yPatch1 = 0.15, zPatch0 = 0.7, zPatch1 = zMax;
+        const xPatch = xMin + 0.002;
+        const corners: [number, number][] = [
+          [yPatch0, zPatch0],
+          [yPatch1, zPatch0],
+          [yPatch1, zPatch1],
+          [yPatch0, zPatch1],
+        ];
+        const patchPos = new Float32Array(corners.length * 3);
+        const patchUV = new Float32Array(corners.length * 2);
+        corners.forEach(([y, z], i) => {
+          patchPos[i * 3] = xPatch;
+          patchPos[i * 3 + 1] = y;
+          patchPos[i * 3 + 2] = z;
+          const [u, v] = planarUV(y, z);
+          patchUV[i * 2] = u;
+          patchUV[i * 2 + 1] = v;
+        });
+        const patchGeom = new THREE.BufferGeometry();
+        patchGeom.setAttribute('position', new THREE.BufferAttribute(patchPos, 3));
+        patchGeom.setAttribute('uv', new THREE.BufferAttribute(patchUV, 2));
+        patchGeom.setIndex([0, 1, 2, 0, 2, 3]);
+
+        if (texture) {
+          // Replace the model's built-in screen wallpaper with the uploaded
+          // screenshot, mapping it onto the screen geometry via clean planar UVs.
           const uv = new Float32Array(pos.count * 2);
           for (let i = 0; i < pos.count; i++) {
             const [u, v] = planarUV(pos.getY(i), pos.getZ(i));
@@ -271,7 +294,6 @@ export function PhoneModel({
             uv[i * 2 + 1] = v;
           }
           geom.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-          child.geometry = geom;
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -286,41 +308,23 @@ export function PhoneModel({
           });
           child.material = screenMaterial;
 
-          // The model's screen mesh has a dynamic-island cutout (a hole at the top
-          // center). The island geometry itself was removed from the GLB, so fill
-          // that hole with a small quad that shares the screen's screenshot and the
-          // exact same planar UV mapping — the pixels line up seamlessly, making the
-          // screenshot cover the whole display. Placed just behind the screen plane
-          // (+x is away from the viewer) so the screen wins in the overlap margin and
-          // the patch only shows through the actual hole, staying under the glass.
-          // Top edge is clamped to the screen's own top (zMax) so the patch never
-          // pokes out beyond the phone; the cutout sits comfortably within these bounds.
-          const yPatch0 = -0.14, yPatch1 = 0.15, zPatch0 = 0.7, zPatch1 = zMax;
-          const xPatch = xMin + 0.002;
-          const corners: [number, number][] = [
-            [yPatch0, zPatch0],
-            [yPatch1, zPatch0],
-            [yPatch1, zPatch1],
-            [yPatch0, zPatch1],
-          ];
-          const patchPos = new Float32Array(corners.length * 3);
-          const patchUV = new Float32Array(corners.length * 2);
-          corners.forEach(([y, z], i) => {
-            patchPos[i * 3] = xPatch;
-            patchPos[i * 3 + 1] = y;
-            patchPos[i * 3 + 2] = z;
-            const [u, v] = planarUV(y, z);
-            patchUV[i * 2] = u;
-            patchUV[i * 2 + 1] = v;
+          // Fill the cutout with the same screenshot so pixels are seamless.
+          const patchMesh = new THREE.Mesh(patchGeom, screenMaterial);
+          child.add(patchMesh);
+        } else {
+          // No screenshot — fill the cutout with a solid dark colour that
+          // matches the shadow of the island, keeping the model's baked screen.
+          const patchMaterial = new THREE.MeshBasicMaterial({
+            color: 0x111111,
+            side: THREE.DoubleSide,
           });
-          const patchGeom = new THREE.BufferGeometry();
-          patchGeom.setAttribute('position', new THREE.BufferAttribute(patchPos, 3));
-          patchGeom.setAttribute('uv', new THREE.BufferAttribute(patchUV, 2));
-          patchGeom.setIndex([0, 1, 2, 0, 2, 3]);
-          child.add(new THREE.Mesh(patchGeom, screenMaterial));
+          const patchMesh = new THREE.Mesh(patchGeom, patchMaterial);
+          child.add(patchMesh);
         }
-      });
-    }
+
+        child.geometry = geom;
+      }
+    });
 
     // Always update modelRef.current children
     while (modelRef.current.children.length > 0) {
