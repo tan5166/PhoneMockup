@@ -4,6 +4,8 @@
 [![GitHub Stars](https://img.shields.io/github/stars/ihou/PhoneMockup?style=flat-square)](https://github.com/ihou/PhoneMockup/stargazers)
 [![License](https://img.shields.io/github/license/ihou/PhoneMockup?style=flat-square)](LICENSE)
 
+> This repository is a fork of [ihou/PhoneMockup](https://github.com/ihou/PhoneMockup), maintained as a standalone repository with additional changes (e.g. an iPhone 17 Pro GLB model with the dynamic island removed and full-bleed screenshots).
+
 **Phone Mockup Generator** is a free, browser-based tool for creating stunning 3D phone mockups. Easily transform your app screenshots into professional device presentations perfect for the App Store, marketing materials, websites, and portfolios.
 
 **[Try the live demo here: https://phonemockup.online/](https://phonemockup.online/)**
