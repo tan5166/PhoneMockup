@@ -51,12 +51,12 @@ export function PhoneModel({
   );
   const obj = gltf.scene;
   
-  // 创建高质量的环境贴图
+  // Create a high-quality environment map
   const envMap = useMemo(() => {
     const pmremGenerator = new THREE.PMREMGenerator(gl);
     pmremGenerator.compileEquirectangularShader();
-    
-    // 创建渐变天空盒
+
+    // Create a gradient skybox
     const envScene = new THREE.Scene();
     const gradientTexture = new THREE.DataTexture(
       generateGradientData(),
@@ -102,14 +102,14 @@ export function PhoneModel({
     return envTexture;
   }, [gl]);
   
-  // 生成渐变数据
+  // Generate the gradient data
   function generateGradientData() {
     const size = 256;
     const data = new Float32Array(size * 4);
     
-    const topColor = new THREE.Color(0.8, 0.9, 1.0);  // 天蓝色
-    const middleColor = new THREE.Color(0.5, 0.6, 0.7);  // 灰蓝色
-    const bottomColor = new THREE.Color(0.2, 0.2, 0.3);  // 深蓝色
+    const topColor = new THREE.Color(0.8, 0.9, 1.0);  // Sky blue
+    const middleColor = new THREE.Color(0.5, 0.6, 0.7);  // Gray blue
+    const bottomColor = new THREE.Color(0.2, 0.2, 0.3);  // Dark blue
     
     for (let i = 0; i < size; i++) {
       const t = i / (size - 1);
@@ -130,13 +130,13 @@ export function PhoneModel({
     return data;
   }
   
-  // 状态管理
+  // State management
   const [isDragging, setIsDragging] = useState(false);
   const [previousTouch, setPreviousTouch] = useState({ x: 0, y: 0 });
   const rotationSpeed = 0.003;
   const autoRotationSpeed = 0.01;
 
-  // 预处理模型和材质
+  // Preprocess the model and materials
   const processedObj = useMemo(() => {
     if (!obj) return null;
 
@@ -151,19 +151,22 @@ export function PhoneModel({
     clonedObj.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
     clonedObj.updateMatrixWorld(true);
 
-    // 机身/边框网格染成机身色；背板玻璃（Material.005）染成单独的背板色；
-    // 镜头、屏幕、玻璃、logo 等保留原始材质。
+    // Tint the body/frame meshes with the shell color; tint the back glass
+    // (Material.005) with a separate back-panel color; keep the original
+    // materials for the lens, screen, glass, logo, etc.
     const shellColor = new THREE.Color('#3a4054');
     const backPanelColor = new THREE.Color('#414759');
     const isShellMesh = (name: string) =>
       /backpanel|basecolor|metalframe|metal|gray|black/.test(name) &&
       !/glass|lens|screen|logo/.test(name);
-    // 注意：GLTFLoader 会移除节点名里的点，运行时名为 "material005"（无点），
-    // 所以这里用 \.? 兼容有点/无点两种形式。
+    // Note: GLTFLoader strips dots from node names, so at runtime it is named
+    // "material005" (no dot); the \.? here matches both the dotted and
+    // dotless forms.
     const isBackPanelMesh = (name: string) => /material\.?005/.test(name);
 
-    // 保留模型自带的原始材质，仅为支持环境反射的材质补上环境贴图、
-    // 按需染色，并开启阴影。
+    // Keep the model's original materials; only add the environment map to
+    // materials that support environment reflections, tint as needed, and
+    // enable shadows.
     clonedObj.traverse((child: THREE.Object3D) => {
       if (child instanceof THREE.Mesh) {
         const name = child.name.toLowerCase();
@@ -181,8 +184,8 @@ export function PhoneModel({
             mat.envMapIntensity = 1.0;
             if (tintColor) {
               mat.color.copy(tintColor);
-              mat.map = null; // 移除原始贴图，让纯色生效
-              // 金属感/粗糙度沿用模型自带的每网格原始值。
+              mat.map = null; // Remove the original texture so the solid color shows
+              // Metalness/roughness keep the model's original per-mesh values.
             }
             mat.needsUpdate = true;
           }
@@ -369,12 +372,12 @@ export function PhoneModel({
     };
   }, [processedObj, gl, isDragging, previousTouch.x, previousTouch.y, invalidate, rotationSpeed, texture, onRotationChange, onZRotationChange]);
 
-  // 自动旋转
+  // Auto-rotation
   useEffect(() => {
     if (isAutoRotating && !isDragging) {
       const interval = setInterval(() => {
         if (modelRef.current) {
-          // 根据旋转方向设置旋转速度
+          // Set the rotation speed based on the rotation direction
           const rotationAmount = rotationDirection === 'clockwise' ? -0.01 : 0.01;
           // Notify parent about rotation delta
           onRotationChange?.(0, rotationAmount);

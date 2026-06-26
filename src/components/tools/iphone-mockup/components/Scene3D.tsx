@@ -4,39 +4,39 @@ import { PhoneModel } from './PhoneModel';
 import { Download, Smartphone, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
 
-// 添加在文件开头的导入语句下面
+// Add below the import statements at the top of the file
 type PresetAngleName = 'front' | 'right' | 'left' | 'reset' | 'autoRotate';
 
 const presetPoses: { name: PresetAngleName; rotation: THREE.Euler }[] = [
   {
     name: "front",
-    rotation: new THREE.Euler(0, 0, 0) // 完全正面
+    rotation: new THREE.Euler(0, 0, 0) // Straight-on front
   },
   {
     name: "right",
-    rotation: new THREE.Euler(0, Math.PI / 12, Math.PI / 24) // Y轴15度，Z轴7.5度
+    rotation: new THREE.Euler(0, Math.PI / 12, Math.PI / 24) // Y axis 15deg, Z axis 7.5deg
   },
   {
     name: "left",
-    rotation: new THREE.Euler(0, -Math.PI / 12, -Math.PI / 24) // Y轴-15度，Z轴-7.5度
+    rotation: new THREE.Euler(0, -Math.PI / 12, -Math.PI / 24) // Y axis -15deg, Z axis -7.5deg
   }
 ];
 
-// 相机控制组件
+// Camera control component
 function CameraController({ zoom }: { zoom: number }) {
   const { camera, invalidate } = useThree();
   
   useEffect(() => {
     const targetZ = zoom;
     const startZ = camera.position.z;
-    const duration = 300; // 动画持续时间（毫秒）
+    const duration = 300; // Animation duration (ms)
     const startTime = Date.now();
 
     function animate() {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // 使用 easeOutQuad 缓动函数
+      // Use the easeOutQuad easing function
       const easeProgress = 1 - (1 - progress) * (1 - progress);
       
       camera.position.z = startZ + (targetZ - startZ) * easeProgress;
@@ -54,7 +54,7 @@ function CameraController({ zoom }: { zoom: number }) {
   return null;
 }
 
-// 添加新的动画控制组件
+// Add a new animation control component
 function ModelAnimationController({ 
   rotationX, 
   rotationY, 
@@ -130,7 +130,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const [canvasSize] = useState<{ width: string; height: number }>({ width: '100%', height: 600 });
   const exportDataRef = useRef<{ scene?: THREE.Scene; camera?: THREE.Camera }>({});
   
-  // 光照控制状态
+  // Lighting control state
   const [modelRotationX, setModelRotationX] = useState(0);
   const [modelRotationY, setModelRotationY] = useState(0);
   const [modelRotationZ, setModelRotationZ] = useState(0);
@@ -164,23 +164,23 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     if (!canvasRef.current || !containerRef.current) return;
 
     try {
-      // 创建临时画布，使用2倍分辨率
+      // Create a temporary canvas at 2x resolution
       const tempCanvas = document.createElement('canvas');
       const container = containerRef.current;
-      const scale = 2; // 分辨率倍数
+      const scale = 2; // Resolution multiplier
       tempCanvas.width = container.offsetWidth * scale;
       tempCanvas.height = container.offsetHeight * scale;
       const tempContext = tempCanvas.getContext('2d');
       
       if (tempContext) {
-        // 启用抗锯齿
+        // Enable anti-aliasing
         tempContext.imageSmoothingEnabled = true;
         tempContext.imageSmoothingQuality = 'high';
-        
-        // 缩放以提高分辨率
+
+        // Scale up to increase resolution
         tempContext.scale(scale, scale);
-        
-        // 使用默认背景色
+
+        // Use the default background color
         tempContext.fillStyle = '#f0f0f0';
         tempContext.fillRect(0, 0, container.offsetWidth, container.offsetHeight);
         if (canvasRef.current) {
@@ -193,7 +193,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     }
   };
 
-  // 辅助函数：导出画布为图片
+  // Helper function: export the canvas as an image
   const exportImage = (canvas: HTMLCanvasElement) => {
     const dataUrl = canvas.toDataURL('image/png', 1.0);
     const link = document.createElement('a');
@@ -208,30 +208,30 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     if (!canvasRef.current) return;
 
     try {
-      // 临时隐藏背景和网格
+      // Temporarily hide the background and grid
       setShowBackground(false);
-      
-      // 等待渲染完成
+
+      // Wait for rendering to finish
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // 获取当前画布的内容
+
+      // Get the current canvas content
       const canvas = canvasRef.current;
-      
-      // 创建临时画布
+
+      // Create a temporary canvas
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
       const tempCtx = tempCanvas.getContext('2d');
       
       if (tempCtx) {
-        // 直接从 WebGL 画布复制内容
+        // Copy content directly from the WebGL canvas
         tempCtx.drawImage(canvas, 0, 0);
-        
-        // 获取图像数据以分析边界
+
+        // Get image data to analyze the bounds
         const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         const { data, width, height } = imageData;
-        
-        // 找到非透明像素的边界
+
+        // Find the bounds of the non-transparent pixels
         let minX = width;
         let minY = height;
         let maxX = 0;
@@ -241,7 +241,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const alpha = data[(y * width + x) * 4 + 3];
-            if (alpha > 10) { // 使用阈值来判断是否为有效内容
+            if (alpha > 10) { // Use a threshold to decide whether it is valid content
               hasContent = true;
               minX = Math.min(minX, x);
               minY = Math.min(minY, y);
@@ -257,14 +257,14 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
           return;
         }
         
-        // 添加一些内边距
+        // Add some padding
         const padding = 20;
         minX = Math.max(0, minX - padding);
         minY = Math.max(0, minY - padding);
         maxX = Math.min(width, maxX + padding);
         maxY = Math.min(height, maxY + padding);
         
-        // 创建新画布并绘制剪后的内容
+        // Create a new canvas and draw the cropped content
         const croppedCanvas = document.createElement('canvas');
         const cropWidth = maxX - minX;
         const cropHeight = maxY - minY;
@@ -273,20 +273,20 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         
         const croppedCtx = croppedCanvas.getContext('2d');
         if (croppedCtx) {
-          // 确保画布背景是透明的
+          // Ensure the canvas background is transparent
           croppedCtx.clearRect(0, 0, cropWidth, cropHeight);
-          
-          // 复制裁剪区域
+
+          // Copy the cropped region
           croppedCtx.drawImage(
             tempCanvas,
             minX, minY, cropWidth, cropHeight,
             0, 0, cropWidth, cropHeight
           );
           
-          // 导出裁剪后的图像
+          // Export the cropped image
           const dataUrl = croppedCanvas.toDataURL('image/png', 1.0);
-          
-          // 创建下载链接
+
+          // Create a download link
           const link = document.createElement('a');
           link.href = dataUrl;
           link.download = 'phone-model.png';
@@ -296,7 +296,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         }
       }
       
-      // 恢复背景和网格
+      // Restore the background and grid
       setShowBackground(true);
     } catch (error) {
       console.error('Error exporting model:', error);
@@ -308,7 +308,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     exportDataRef.current = { scene, camera };
   }, []);
 
-  // 应用预设姿势
+  // Apply a preset pose
   const applyPresetPose = useCallback((rotation: THREE.Euler) => {
     // Directly set state instead of dispatching events
     setModelRotationX(rotation.x);
@@ -416,7 +416,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* 导出按钮组 */}
+      {/* Export button group */}
       <div className="w-full flex justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <button
@@ -449,7 +449,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         </div>
       </div>
 
-      {/* 预设姿势按钮组 */}
+      {/* Preset pose button group */}
       <div className="w-full flex items-center gap-4 mt-4">
         <span className="text-sm text-gray-600">Preset Angles:</span>
         <div className="flex gap-2">
@@ -465,7 +465,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         </div>
       </div>
 
-      {/* 3D 预览域 */}
+      {/* 3D preview area */}
       <div 
         ref={containerRef} 
         className="w-full bg-gray-100 relative"
@@ -535,10 +535,10 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               />
             </group>
 
-            {/* 基础环境光 */}
+            {/* Base ambient light */}
             <ambientLight intensity={0.3} color="#ffffff" />
             
-            {/* 主要照明：强力聚光灯 */}
+            {/* Key light: powerful spotlight */}
             <spotLight 
               position={[0, 0, 100]} 
               intensity={8.0}
@@ -549,7 +549,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               decay={1.5}
             />
             
-            {/* 边缘照明：四个角的聚光灯 */}
+            {/* Edge lighting: spotlights at the four corners */}
             <spotLight 
               position={[50, 50, 50]} 
               intensity={4.0}
@@ -587,7 +587,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               decay={1.5}
             />
             
-            {/* 侧面补光 */}
+            {/* Side fill light */}
             <directionalLight 
               position={[100, 0, 50]} 
               intensity={2.0}
@@ -599,7 +599,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               color="#ffffff"
             />
             
-            {/* 顶部和底部的补光 */}
+            {/* Top and bottom fill light */}
             <directionalLight 
               position={[0, 100, 50]} 
               intensity={1.5}
@@ -666,7 +666,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
 
       {/* Control Panels */}
       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-        {/* 模型控制 */}
+        {/* Model controls */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Model Controls</h3>
           <div className="space-y-3">
@@ -839,7 +839,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
           </div>
         </div>
         
-        {/* 位置控制 */}
+        {/* Position controls */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Position Controls</h3>
           <div className="space-y-3">

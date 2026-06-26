@@ -15,7 +15,7 @@ function App({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#1c1f23" />
         
-        {/* 预加载关键资源 */}
+        {/* Preload critical resources */}
         <link 
           rel="preload" 
           href="/fonts/inter-var.woff2" 
@@ -32,7 +32,7 @@ function App({ Component, pageProps }: AppProps) {
           href="https://phonemockup-online.dev" 
         />
         
-        {/* PWA 相关 */}
+        {/* PWA related */}
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
