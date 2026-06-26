@@ -11,6 +11,8 @@ interface PhoneModelProps {
   rotationDirection?: 'clockwise' | 'counterclockwise';
   onRotationChange?: (deltaX: number, deltaY: number) => void;
   onZRotationChange?: (deltaZ: number) => void;
+  shellColor?: string;
+  backPanelColor?: string;
 }
 
 export function PhoneModel({
@@ -20,6 +22,8 @@ export function PhoneModel({
   rotationDirection = 'clockwise',
   onRotationChange,
   onZRotationChange,
+  shellColor = '#3a4054',
+  backPanelColor = '#414759',
 }: PhoneModelProps) {
   const modelRef = useRef<THREE.Group | null>(null);
   const screenTexture = useScreenTexture(screenshotUrl);
@@ -154,8 +158,8 @@ export function PhoneModel({
     // Tint the body/frame meshes with the shell color; tint the back glass
     // (Material.005) with a separate back-panel color; keep the original
     // materials for the lens, screen, glass, logo, etc.
-    const shellColor = new THREE.Color('#3a4054');
-    const backPanelColor = new THREE.Color('#414759');
+    const shellColorObj = new THREE.Color(shellColor);
+    const backPanelColorObj = new THREE.Color(backPanelColor);
     const isShellMesh = (name: string) =>
       /backpanel|basecolor|metalframe|metal|gray|black/.test(name) &&
       !/glass|lens|screen|logo/.test(name);
@@ -171,9 +175,9 @@ export function PhoneModel({
       if (child instanceof THREE.Mesh) {
         const name = child.name.toLowerCase();
         const tintColor = isShellMesh(name)
-          ? shellColor
+          ? shellColorObj
           : isBackPanelMesh(name)
-            ? backPanelColor
+            ? backPanelColorObj
             : null;
         const applyMaterial = (mat: THREE.Material) => {
           if (
@@ -207,7 +211,7 @@ export function PhoneModel({
       }
     });
     return clonedObj;
-  }, [obj, envMap]);
+  }, [obj, envMap, shellColor, backPanelColor]);
   
   useEffect(() => {
     if (!processedObj || !modelRef.current) return;

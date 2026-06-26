@@ -117,6 +117,8 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showBackground, setShowBackground] = useState(true);
   const canvasSize = { width: '100%', height: 600 };
+  const [shellColor, setShellColor] = useState('#3a4054');
+  const [backPanelColor, setBackPanelColor] = useState('#414759');
   // Lighting control state
   const [modelRotationX, setModelRotationX] = useState(0);
   const [modelRotationY, setModelRotationY] = useState(0);
@@ -442,13 +444,15 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               <gridHelper args={[40, 40]} position={[0, -8, 0]} />
             )}
             <group position={[positionX, positionY, 0]}>
-              <PhoneModel 
-                screenshotUrl={screenshotUrl} 
+              <PhoneModel
+                screenshotUrl={screenshotUrl}
                 isAutoRotating={isAutoRotating}
                 onLoadProgress={setLoadingProgress}
                 rotationDirection={rotationDirection}
                 onRotationChange={handleRotationChange}
                 onZRotationChange={handleZRotationChange}
+                shellColor={shellColor}
+                backPanelColor={backPanelColor}
               />
             </group>
 
@@ -755,9 +759,11 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
 
           </div>
         </div>
-        
-        {/* Position controls */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+
+        {/* Right column: Position + Color */}
+        <div className="flex flex-col gap-4">
+          {/* Position controls */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Position Controls</h3>
           <div className="space-y-3">
             <div>
@@ -792,6 +798,32 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
                 onChange={(e) => setPositionY(Number(e.target.value))}
                 className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
               />
+            </div>
+          </div>
+          </div>
+
+          {/* Color controls */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Color Controls</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-600">Shell Color</label>
+                <input
+                  type="color"
+                  value={shellColor}
+                  onChange={(e) => setShellColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm text-gray-600">Back Panel Color</label>
+                <input
+                  type="color"
+                  value={backPanelColor}
+                  onChange={(e) => setBackPanelColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+              </div>
             </div>
           </div>
         </div>
