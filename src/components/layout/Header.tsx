@@ -33,7 +33,7 @@ export function Header() {
               Phone Mockup
             </Link>
 <a 
-              href="http://github.com/ihou/PhoneMockup/" 
+              href="http://github.com/tan5166/PhoneMockup/" 
               className="text-gray-600 hover:text-[#10b981] transition-colors flex items-center"
               target="_blank" 
               rel="noopener noreferrer" 
