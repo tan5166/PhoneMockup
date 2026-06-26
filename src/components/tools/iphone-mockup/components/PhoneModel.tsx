@@ -7,25 +7,17 @@ import { useScreenTexture } from '../hooks/useScreenTexture';
 interface PhoneModelProps {
   screenshotUrl: string | null | undefined;
   isAutoRotating: boolean;
-  metalness: number;
-  roughness: number;
   onLoadProgress?: (progress: number) => void;
   rotationDirection?: 'clockwise' | 'counterclockwise';
-  paddingHorizontal: number;
-  paddingVertical: number;
   onRotationChange?: (deltaX: number, deltaY: number) => void;
   onZRotationChange?: (deltaZ: number) => void;
 }
 
 export function PhoneModel({
-  screenshotUrl, 
+  screenshotUrl,
   isAutoRotating,
-  metalness,
-  roughness,
   onLoadProgress,
   rotationDirection = 'clockwise',
-  paddingHorizontal,
-  paddingVertical,
   onRotationChange,
   onZRotationChange,
 }: PhoneModelProps) {
@@ -190,6 +182,7 @@ export function PhoneModel({
             if (tintColor) {
               mat.color.copy(tintColor);
               mat.map = null; // 移除原始贴图，让纯色生效
+              // 金属感/粗糙度沿用模型自带的每网格原始值。
             }
             mat.needsUpdate = true;
           }
@@ -211,7 +204,7 @@ export function PhoneModel({
       }
     });
     return clonedObj;
-  }, [obj, metalness, roughness]);
+  }, [obj, envMap]);
   
   useEffect(() => {
     if (!processedObj || !modelRef.current) return;

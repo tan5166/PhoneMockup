@@ -1,10 +1,8 @@
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react';
-import { Canvas, useThree, useLoader } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { PhoneModel } from './PhoneModel';
-import { SceneLighting } from './SceneLighting';
-import { Download, Smartphone, MoveHorizontal, MoveVertical, Save, Trash2, Play } from 'lucide-react';
+import { Download, Smartphone, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
-import html2canvas from 'html2canvas';
 
 // 添加在文件开头的导入语句下面
 type PresetAngleName = 'front' | 'right' | 'left' | 'reset' | 'autoRotate';
@@ -85,33 +83,11 @@ function ModelAnimationController({
     }
   }, [phoneModel, rotationX, rotationY, rotationZ, positionX, positionY, invalidate]);
 
-  /* Original Animation Logic (Commented out for testing)
-  useEffect(() => {
-    if (!phoneModel) return;
-// ... (rest of the original animation useEffect code) ...
-  }, [phoneModel, rotationX, rotationY, positionX, positionY, invalidate]);
-  */
-
-  return null;
-}
-
-function SceneCapture() {
-  const { gl, scene, camera, invalidate } = useThree();
-  
-  useEffect(() => {
-    // @ts-ignore
-    gl.domElement.scene = scene;
-    // @ts-ignore
-    gl.domElement.camera = camera;
-    invalidate();
-  }, [gl, scene, camera, invalidate]);
-  
   return null;
 }
 
 interface Scene3DProps {
   screenshotUrl: string | null | undefined;
-  background: string | null | undefined;
 }
 
 function ExportHelper({ onExport }: { onExport: (scene: THREE.Scene, camera: THREE.Camera) => void }) {
@@ -123,52 +99,6 @@ function ExportHelper({ onExport }: { onExport: (scene: THREE.Scene, camera: THR
   }, [scene, camera, onExport, invalidate]);
   
   return null;
-}
-
-// 背景组件
-function Background({ imageUrl }: { imageUrl: string }) {
-  const texture = useLoader(THREE.TextureLoader, imageUrl);
-  const { viewport, camera, invalidate } = useThree();
-  
-  useEffect(() => {
-    if (texture && texture.image) {
-      // 设置纹理的基本属性
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      
-      // 计算图片和视口的宽高比
-      const imageAspect = texture.image.width / texture.image.height;
-      const viewportAspect = viewport.width / viewport.height;
-      
-      // 根据宽高比决定如何缩放纹理
-      if (imageAspect > viewportAspect) {
-        // 图片较宽，以高度为准
-        const scale = viewport.height / viewport.width;
-        texture.repeat.set(1, scale * imageAspect);
-        texture.offset.set(0, (1 - texture.repeat.y) / 2);
-      } else {
-        // 图片较高，以宽度为准
-        const scale = viewport.width / viewport.height;
-        texture.repeat.set(scale / imageAspect, 1);
-        texture.offset.set((1 - texture.repeat.x) / 2, 0);
-      }
-      
-      texture.needsUpdate = true;
-      invalidate();
-    }
-  }, [texture, viewport, invalidate]);
-
-  return (
-    <mesh position={[0, 0, -30]}>
-      <planeGeometry args={[viewport.width * 2, viewport.height * 2]} />
-      <meshBasicMaterial 
-        map={texture} 
-        transparent={true}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
 }
 
 // Preset interfaces (Add these)
@@ -186,30 +116,22 @@ interface Preset {
   values: PresetValue;
 }
 
-export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
+export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const [isAutoRotating, setIsAutoRotating] = useState(false);
   const [rotationDirection, setRotationDirection] = useState<'clockwise' | 'counterclockwise'>('clockwise');
-  const [zoom, setZoom] = useState(45);
+  const [zoom, setZoom] = useState(50);
   const [positionX, setPositionX] = useState(0);
   const [positionY, setPositionY] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showBackground, setShowBackground] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExporting] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
-  const [canvasSize, setCanvasSize] = useState<{ width: string; height: number }>({ width: '100%', height: 600 });
+  const [canvasSize] = useState<{ width: string; height: number }>({ width: '100%', height: 600 });
   const exportDataRef = useRef<{ scene?: THREE.Scene; camera?: THREE.Camera }>({});
   
   // 光照控制状态
-  const [ambientIntensity, setAmbientIntensity] = useState(0.8);
-  const [pointLightIntensity, setPointLightIntensity] = useState(0.5);
-  const [metalness, setMetalness] = useState(0.9);
-  const [roughness, setRoughness] = useState(0.2);
-  // Separate padding states
-  const [paddingHorizontal, setPaddingHorizontal] = useState(0.05); // Default 95% width
-  const [paddingVertical, setPaddingVertical] = useState(0.03);   // Default 97% height
-  
   const [modelRotationX, setModelRotationX] = useState(0);
   const [modelRotationY, setModelRotationY] = useState(0);
   const [modelRotationZ, setModelRotationZ] = useState(0);
@@ -238,98 +160,6 @@ export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
     }
   }, []); 
 
-  // 预设场景尺寸
-  const presetSizes = [
-    { name: '16:9', width: '100%', height: 600, aspectRatio: 16/9 },
-    { name: '4:3', width: '100%', height: 800, aspectRatio: 4/3 },
-    { name: '1:1', width: '100%', height: 1000, aspectRatio: 1 },
-  ];
-
-  // 处理场景尺寸变化
-  const handleSizeChange = (preset: typeof presetSizes[0]) => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const height = Math.round(containerWidth / preset.aspectRatio);
-      setCanvasSize({ width: preset.width, height });
-    }
-  };
-
-  // 裁剪空白区域的函数
-  const trimCanvas = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-    const context = canvas.getContext('2d');
-    if (!context) return canvas;
-
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    const l = pixels.data.length;
-    const bound = {
-      top: null as number | null,
-      left: null as number | null,
-      right: null as number | null,
-      bottom: null as number | null
-    };
-    
-    // 扫描像素来找到边界
-    for (let i = 0; i < l; i += 4) {
-      if (pixels.data[i + 3] !== 0) {
-        const x = (i / 4) % canvas.width;
-        const y = ~~((i / 4) / canvas.width);
-
-        if (bound.top === null) {
-          bound.top = y;
-        }
-        if (bound.left === null) {
-          bound.left = x;
-        } else if (x < bound.left) {
-          bound.left = x;
-        }
-        if (bound.right === null) {
-          bound.right = x;
-        } else if (bound.right < x) {
-          bound.right = x;
-        }
-        if (bound.bottom === null) {
-          bound.bottom = y;
-        } else if (bound.bottom < y) {
-          bound.bottom = y;
-        }
-      }
-    }
-
-    // 检查是否找到了边界
-    if (bound.top === null ||
-        bound.left === null ||
-        bound.right === null ||
-        bound.bottom === null) {
-      return canvas;
-    }
-
-    // 添加一些内边距
-    const padding = 20;
-    bound.top = Math.max(0, bound.top - padding);
-    bound.left = Math.max(0, bound.left - padding);
-    bound.right = Math.min(canvas.width, bound.right + padding);
-    bound.bottom = Math.min(canvas.height, bound.bottom + padding);
-
-    const trimWidth = bound.right - bound.left;
-    const trimHeight = bound.bottom - bound.top;
-    
-    // 创建新的画布
-    const trimmed = document.createElement('canvas');
-    trimmed.width = trimWidth;
-    trimmed.height = trimHeight;
-    
-    // 复制裁剪区域到新画布
-    const trimmedContext = trimmed.getContext('2d');
-    if (trimmedContext) {
-      trimmedContext.drawImage(
-        canvas,
-        bound.left, bound.top, trimWidth, trimHeight,
-        0, 0, trimWidth, trimHeight
-      );
-    }
-    
-    return trimmed;
-  };
 
   const handleExport = () => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -786,12 +616,8 @@ export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
               <PhoneModel 
                 screenshotUrl={screenshotUrl} 
                 isAutoRotating={isAutoRotating}
-                metalness={metalness}
-                roughness={roughness}
                 onLoadProgress={setLoadingProgress}
                 rotationDirection={rotationDirection}
-                paddingHorizontal={paddingHorizontal}
-                paddingVertical={paddingVertical}
                 onRotationChange={handleRotationChange}
                 onZRotationChange={handleZRotationChange}
               />
@@ -927,7 +753,7 @@ export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
       )}
 
       {/* Control Panels */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
         {/* 模型控制 */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Model Controls</h3>
@@ -1135,76 +961,6 @@ export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
                 step="0.5"
                 value={positionY}
                 onChange={(e) => setPositionY(Number(e.target.value))}
-                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
-              />
-            </div>
-          </div>
-        </div>
-        
-        {/* 材质控制 */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <h3 className="text-sm font-medium text-[#1c1f23] mb-3">Material Controls</h3>
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="metalness" className="text-sm text-gray-600">Shell Metalness</label>
-                <span className="text-xs text-gray-500">{metalness.toFixed(1)}</span>
-              </div>
-              <input
-                id="metalness"
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={metalness}
-                onChange={(e) => setMetalness(Number(e.target.value))}
-                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="roughness" className="text-sm text-gray-600">Shell Roughness</label>
-                <span className="text-xs text-gray-500">{roughness.toFixed(1)}</span>
-              </div>
-              <input
-                id="roughness"
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={roughness}
-                onChange={(e) => setRoughness(Number(e.target.value))}
-                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="paddingHorizontal" className="text-sm text-gray-600">Horizontal Padding</label>
-                <span className="text-xs text-gray-500">{((1-paddingHorizontal) * 100).toFixed(0)}% width</span> 
-              </div>
-              <input
-                id="paddingHorizontal"
-                type="range"
-                min="0.01" max="0.20" step="0.005"
-                value={paddingHorizontal}
-                onChange={(e) => setPaddingHorizontal(Number(e.target.value))}
-                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
-              />
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label htmlFor="paddingVertical" className="text-sm text-gray-600">Vertical Padding</label>
-                <span className="text-xs text-gray-500">{((1-paddingVertical) * 100).toFixed(0)}% height</span> 
-              </div>
-              <input
-                id="paddingVertical"
-                type="range"
-                min="0.01" max="0.20" step="0.005"
-                value={paddingVertical}
-                onChange={(e) => setPaddingVertical(Number(e.target.value))}
                 className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-[#6ee7b7]"
               />
             </div>

@@ -75,7 +75,7 @@ export function IphoneMockup() {
               </span>
               <span>3D Preview</span>
             </h2>
-            <Scene3D screenshotUrl={selectedScreenshot} background={null} />
+            <Scene3D screenshotUrl={selectedScreenshot} />
           </div>
         </div>
       </div>
