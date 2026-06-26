@@ -58,7 +58,6 @@ const HomePage: NextPage<Props> = ({ canonicalUrl, alternateUrls }) => {
       "url": "https://phonemockup-online.dev"
     },
     "inLanguage": ["en", "zh"],
-    "license": "https://phonemockup-online.dev/terms",
     "url": canonicalUrl
   };
 
