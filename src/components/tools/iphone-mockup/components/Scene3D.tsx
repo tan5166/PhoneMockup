@@ -127,7 +127,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showBackground, setShowBackground] = useState(true);
   const [isExporting] = useState(false);
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [canvasSize] = useState<{ width: string; height: number }>({ width: '100%', height: 600 });
   const exportDataRef = useRef<{ scene?: THREE.Scene; camera?: THREE.Camera }>({});
   
@@ -181,61 +180,13 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         // 缩放以提高分辨率
         tempContext.scale(scale, scale);
         
-        // 如果有背景图，先绘制背景
-        if (backgroundImage) {
-          const img = new Image();
-          img.src = backgroundImage;
-          
-          img.onload = () => {
-            // 计算背景图的绘制参数，实现 cover 效果
-            const imgAspect = img.width / img.height;
-            const canvasAspect = container.offsetWidth / container.offsetHeight;
-            let drawWidth = container.offsetWidth;
-            let drawHeight = container.offsetHeight;
-            let x = 0;
-            let y = 0;
-            
-            if (imgAspect > canvasAspect) {
-              // 图片较宽，以高度为准
-              drawWidth = container.offsetHeight * imgAspect;
-              x = (container.offsetWidth - drawWidth) / 2;
-            } else {
-              // 图片较高，以宽度为准
-              drawHeight = container.offsetWidth / imgAspect;
-              y = (container.offsetHeight - drawHeight) / 2;
-            }
-            
-            // 绘制背景
-            tempContext.drawImage(img, x, y, drawWidth, drawHeight);
-            
-            // 绘制 WebGL 内容
-            if (canvasRef.current) {
-              tempContext.drawImage(canvasRef.current, 0, 0, container.offsetWidth, container.offsetHeight);
-            }
-            
-            // 导出
-            exportImage(tempCanvas);
-          };
-          
-          img.onerror = () => {
-            console.error('Error loading background image');
-            // 如果背景图加载失败，使用默认背景色
-            tempContext.fillStyle = '#f0f0f0';
-            tempContext.fillRect(0, 0, container.offsetWidth, container.offsetHeight);
-            if (canvasRef.current) {
-              tempContext.drawImage(canvasRef.current, 0, 0, container.offsetWidth, container.offsetHeight);
-            }
-            exportImage(tempCanvas);
-          };
-        } else {
-          // 使用默认背景色
-          tempContext.fillStyle = '#f0f0f0';
-          tempContext.fillRect(0, 0, container.offsetWidth, container.offsetHeight);
-          if (canvasRef.current) {
-            tempContext.drawImage(canvasRef.current, 0, 0, container.offsetWidth, container.offsetHeight);
-          }
-          exportImage(tempCanvas);
+        // 使用默认背景色
+        tempContext.fillStyle = '#f0f0f0';
+        tempContext.fillRect(0, 0, container.offsetWidth, container.offsetHeight);
+        if (canvasRef.current) {
+          tempContext.drawImage(canvasRef.current, 0, 0, container.offsetWidth, container.offsetHeight);
         }
+        exportImage(tempCanvas);
       }
     } catch (error) {
       console.error('Error exporting image:', error);
@@ -357,18 +308,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     exportDataRef.current = { scene, camera };
   }, []);
 
-  // 处理背景图上传
-  const handleBackgroundUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setBackgroundImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   // 应用预设姿势
   const applyPresetPose = useCallback((rotation: THREE.Euler) => {
     // Directly set state instead of dispatching events
@@ -480,29 +419,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
       {/* 导出按钮组 */}
       <div className="w-full flex justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 px-4 py-2 bg-white text-[#1c1f23] border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer shadow-sm">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleBackgroundUpload}
-              className="hidden"
-            />
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#10b981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            Upload Background
-          </label>
-          {backgroundImage && (
-            <button
-              onClick={() => setBackgroundImage(null)}
-              className="px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-            >
-              Remove Background
-            </button>
-          )}
-          <div className="h-6 w-px bg-gray-200 mx-2" />
           <button
             onClick={() => setShowBackground(!showBackground)}
             className={`px-4 py-2 border rounded-xl transition-colors ${
@@ -553,12 +469,8 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
       <div 
         ref={containerRef} 
         className="w-full bg-gray-100 relative"
-        style={{ 
+        style={{
           height: canvasSize.height,
-          backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
         }}
       >
         {loadingProgress > 0 && loadingProgress < 1 && (
@@ -594,7 +506,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
           style={{
             width: '100%',
             height: '100%',
-            background: backgroundImage ? 'transparent' : '#f0f0f0',
+            background: '#f0f0f0',
           }}
           flat
           frameloop={isAutoRotating ? 'always' : 'demand'}
@@ -609,7 +521,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               positionY={positionY}
             />
             {isExporting && <ExportHelper onExport={handleSceneExport} />}
-            {showBackground && !backgroundImage && (
+            {showBackground && (
               <gridHelper args={[40, 40]} position={[0, -8, 0]} />
             )}
             <group position={[positionX, positionY, 0]}>
