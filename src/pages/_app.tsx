@@ -23,14 +23,6 @@ function App({ Component, pageProps }: AppProps) {
           type="font/woff2" 
           crossOrigin="anonymous" 
         />
-        <link 
-          rel="preconnect" 
-          href="https://phonemockup-online.dev" 
-        />
-        <link 
-          rel="dns-prefetch" 
-          href="https://phonemockup-online.dev" 
-        />
         
         {/* PWA related */}
         <link rel="manifest" href="/manifest.json" />
