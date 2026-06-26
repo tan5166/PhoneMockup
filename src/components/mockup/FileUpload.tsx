@@ -1,5 +1,5 @@
 import React from 'react';
-import { UploadCloud, Eye, Trash2 } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
 interface FileUploadProps {

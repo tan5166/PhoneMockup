@@ -90,16 +90,6 @@ interface Scene3DProps {
   screenshotUrl: string | null | undefined;
 }
 
-function ExportHelper({ onExport }: { onExport: (scene: THREE.Scene, camera: THREE.Camera) => void }) {
-  const { scene, camera, invalidate } = useThree();
-  
-  useEffect(() => {
-    onExport(scene, camera);
-    invalidate();
-  }, [scene, camera, onExport, invalidate]);
-  
-  return null;
-}
 
 // Preset interfaces (Add these)
 interface PresetValue {
@@ -126,10 +116,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [showBackground, setShowBackground] = useState(true);
-  const [isExporting] = useState(false);
-  const [canvasSize] = useState<{ width: string; height: number }>({ width: '100%', height: 600 });
-  const exportDataRef = useRef<{ scene?: THREE.Scene; camera?: THREE.Camera }>({});
-  
+  const canvasSize = { width: '100%', height: 600 };
   // Lighting control state
   const [modelRotationX, setModelRotationX] = useState(0);
   const [modelRotationY, setModelRotationY] = useState(0);
@@ -304,10 +291,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     }
   };
 
-  const handleSceneExport = useCallback((scene: THREE.Scene, camera: THREE.Camera) => {
-    exportDataRef.current = { scene, camera };
-  }, []);
-
   // Apply a preset pose
   const applyPresetPose = useCallback((rotation: THREE.Euler) => {
     // Directly set state instead of dispatching events
@@ -317,22 +300,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     // Optionally reset position when applying angle presets
     setPositionX(0);
     setPositionY(0);
-
-    /* Original event dispatch logic (commented out)
-    const resetEvent = new CustomEvent('reset-rotation');
-    window.dispatchEvent(resetEvent);
-    
-    setTimeout(() => {
-      const horizontalEvent = new CustomEvent('rotate-horizontal', { detail: rotation.y });
-      const verticalEvent = new CustomEvent('rotate-vertical', { detail: rotation.x });
-      const zRotationEvent = new CustomEvent('rotate-z', { detail: rotation.z });
-      
-      window.dispatchEvent(horizontalEvent);
-      window.dispatchEvent(verticalEvent);
-      window.dispatchEvent(zRotationEvent);
-    }, 50);
-    */
-  }, [setModelRotationX, setModelRotationY, setModelRotationZ, setPositionX, setPositionY]); // Add setters to dependency array
+  }, []);
 
   // Define the rotation change handler
   const handleRotationChange = useCallback((deltaX: number, deltaY: number) => {
@@ -520,7 +488,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
               positionX={positionX}
               positionY={positionY}
             />
-            {isExporting && <ExportHelper onExport={handleSceneExport} />}
+
             {showBackground && (
               <gridHelper args={[40, 40]} position={[0, -8, 0]} />
             )}
