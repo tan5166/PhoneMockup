@@ -166,8 +166,8 @@ const HomePage: NextPage = () => {
                 <div className="w-12 h-12 bg-[#93c5fd]/20 flex items-center justify-center rounded-xl mb-6">
                   <Monitor className="w-6 h-6 text-[#3b82f6]" />
                 </div>
-                <h3 className="text-xl font-bold text-[#1c1f23] mb-3">Multiple Device Frames</h3>
-                <p className="text-gray-600">Choose from various phone models to showcase your app in the perfect context with our Phone Mockup tool</p>
+                <h3 className="text-xl font-bold text-[#1c1f23] mb-3">Simulator Screenshot Import</h3>
+                <p className="text-gray-600">Capture screenshots from the iPhone 17 Pro simulator on macOS and import them here to generate stunning 3D mockups</p>
               </div>
               
               <div className="bg-white p-8 rounded-2xl shadow-md hover:shadow-lg transition-shadow">
