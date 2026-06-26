@@ -1,7 +1,7 @@
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { PhoneModel } from '@/components/mockup/PhoneModel';
-import { Download, Smartphone, Save, Trash2 } from 'lucide-react';
+import { Download, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
 
 // Add below the import statements at the top of the file
@@ -146,50 +146,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
     }
   }, []); 
 
-
-  const handleExport = () => {
-    if (!canvasRef.current || !containerRef.current) return;
-
-    try {
-      // Create a temporary canvas at 2x resolution
-      const tempCanvas = document.createElement('canvas');
-      const container = containerRef.current;
-      const scale = 2; // Resolution multiplier
-      tempCanvas.width = container.offsetWidth * scale;
-      tempCanvas.height = container.offsetHeight * scale;
-      const tempContext = tempCanvas.getContext('2d');
-      
-      if (tempContext) {
-        // Enable anti-aliasing
-        tempContext.imageSmoothingEnabled = true;
-        tempContext.imageSmoothingQuality = 'high';
-
-        // Scale up to increase resolution
-        tempContext.scale(scale, scale);
-
-        // Use the default background color
-        tempContext.fillStyle = '#f0f0f0';
-        tempContext.fillRect(0, 0, container.offsetWidth, container.offsetHeight);
-        if (canvasRef.current) {
-          tempContext.drawImage(canvasRef.current, 0, 0, container.offsetWidth, container.offsetHeight);
-        }
-        exportImage(tempCanvas);
-      }
-    } catch (error) {
-      console.error('Error exporting image:', error);
-    }
-  };
-
-  // Helper function: export the canvas as an image
-  const exportImage = (canvas: HTMLCanvasElement) => {
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = 'phone-showcase.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleExportModel = async () => {
     if (!canvasRef.current) return;
@@ -402,13 +358,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportModel}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1c1f23] hover:bg-[#2d3748] text-white transition-colors shadow-sm"
-          >
-            <Smartphone className="w-4 h-4" />
-            Export Model
-          </button>
-          <button
-            onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1c1f23] hover:bg-[#2d3748] text-white transition-colors shadow-sm"
           >
             <Download className="w-4 h-4" />
