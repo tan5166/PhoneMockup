@@ -73,7 +73,7 @@ export function IphoneMockup() {
               <span className="w-6 h-6 bg-[#6ee7b7]/20 flex items-center justify-center rounded-md mr-2">
                 <span className="text-[#10b981] text-sm">3D</span>
               </span>
-              <span>3D Preview</span>
+              <span>3D Preview of iPhone 17 Pro</span>
             </h2>
             <Scene3D screenshotUrl={selectedScreenshot} />
           </div>

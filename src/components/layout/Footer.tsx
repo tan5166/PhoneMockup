@@ -39,6 +39,11 @@ export function Footer() {
                   Features
                 </Link>
               </li>
+              <li>
+                <Link href="/license" className="text-gray-600 hover:text-[#10b981] transition-colors text-sm">
+                  License
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
