@@ -1,7 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Github } from 'lucide-react';
 
 export function Header() {
   return (
@@ -32,15 +31,6 @@ export function Header() {
             <Link href="#mockup-tool" className="text-gray-700 hover:text-[#10b981] font-medium transition-colors">
               Phone Mockup
             </Link>
-<a 
-              href="http://github.com/tan5166/PhoneMockup/" 
-              className="text-gray-600 hover:text-[#10b981] transition-colors flex items-center"
-              target="_blank" 
-              rel="noopener noreferrer" 
-              aria-label="GitHub Repository"
-            >
-              <Github size={20} />
-            </a>
           </nav>
         </div>
       </div>
