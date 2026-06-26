@@ -70,7 +70,7 @@ const HomePage: NextPage = () => {
         <Header />
         
         {/* Hero Section with full-width text layout */}
-        <div className="bg-[#1c1f23] text-white py-16 md:py-24">
+        <div className="bg-[#1c1f23] text-white py-16 md:py-24 overflow-hidden">
           <div className="max-w-screen-xl mx-auto px-4 md:px-8">
             <div className="relative z-10 max-w-3xl mx-auto text-center">
               <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#6ee7b7]/10 rounded-full blur-3xl"></div>
