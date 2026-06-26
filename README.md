@@ -1,14 +1,11 @@
 # Phone Mockup Generator
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Try%20it%20Online-green?style=flat-square)](https://phonemockup.online/)
-[![GitHub Stars](https://img.shields.io/github/stars/ihou/PhoneMockup?style=flat-square)](https://github.com/ihou/PhoneMockup/stargazers)
-[![License](https://img.shields.io/github/license/ihou/PhoneMockup?style=flat-square)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/tan5166/PhoneMockup?style=flat-square)](https://github.com/tan5166/PhoneMockup/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 > This repository is a fork of [ihou/PhoneMockup](https://github.com/ihou/PhoneMockup), maintained as a standalone repository with additional changes (e.g. an iPhone 17 Pro GLB model with the dynamic island removed and full-bleed screenshots).
 
 **Phone Mockup Generator** is a free, browser-based tool for creating stunning 3D phone mockups. Easily transform your app screenshots into professional device presentations perfect for the App Store, marketing materials, websites, and portfolios.
-
-**[Try the live demo here: https://phonemockup.online/](https://phonemockup.online/)**
 
 ## Features
 
@@ -36,7 +33,7 @@
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/ihou/PhoneMockup.git
+    git clone https://github.com/tan5166/PhoneMockup.git
     cd PhoneMockup
     ```
 
@@ -86,6 +83,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-Project Link: [https://github.com/ihou/PhoneMockup](https://github.com/ihou/PhoneMockup)
+Project Link: [https://github.com/tan5166/PhoneMockup](https://github.com/tan5166/PhoneMockup)
 
-Live Site: **[https://phonemockup.online/](https://phonemockup.online/)** 
+Upstream: [https://github.com/ihou/PhoneMockup](https://github.com/ihou/PhoneMockup) 
