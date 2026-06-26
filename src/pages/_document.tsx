@@ -27,6 +27,15 @@ class MyDocument extends Document {
               />
             </>
           )}
+
+          {/* Google AdSense */}
+          {process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID && (
+            <script
+              async
+              src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}`}
+              crossOrigin="anonymous"
+            />
+          )}
         </Head>
         <body>
           <Main />
