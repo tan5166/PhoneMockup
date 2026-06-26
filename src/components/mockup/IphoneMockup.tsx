@@ -2,8 +2,8 @@
 
 import { Smartphone } from 'lucide-react';
 import React, { useState } from 'react';
-import { Scene3D } from './components/Scene3D';
-import { FileUpload } from './components/FileUpload';
+import { Scene3D } from '@/components/mockup/Scene3D';
+import { FileUpload } from '@/components/mockup/FileUpload';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Screenshot {

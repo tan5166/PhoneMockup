@@ -1,13 +1,13 @@
 import { GetStaticProps, NextPage } from 'next';
 import Head from 'next/head';
-import { Footer } from '@/components/Footer';
-import { Header } from '@/components/Header';
+import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout/Header';
 import { JsonLd } from '@/components/JsonLd';
 import dynamic from 'next/dynamic';
 
 // Dynamic import of client-side component
 const IphoneMockup = dynamic(
-  () => import('@/components/tools/iphone-mockup/IphoneMockup').then(mod => mod.IphoneMockup),
+  () => import('@/components/mockup/IphoneMockup').then(mod => mod.IphoneMockup),
   { ssr: false }
 );
 

@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useMemo } from 'react';
 import { useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three';
-import { useScreenTexture } from '../hooks/useScreenTexture';
+import { useScreenTexture } from '@/hooks/useScreenTexture';
 
 interface PhoneModelProps {
   screenshotUrl: string | null | undefined;

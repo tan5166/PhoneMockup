@@ -1,6 +1,6 @@
 import { Suspense, useState, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { PhoneModel } from './PhoneModel';
+import { PhoneModel } from '@/components/mockup/PhoneModel';
 import { Download, Smartphone, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
 
