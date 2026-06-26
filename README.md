@@ -30,6 +30,16 @@
 
 ## Getting Started
 
+> **Note:** The 3D phone model (`public/models/iphone17pro-2.glb`) is stored with
+> [Git LFS](https://git-lfs.com/). Install it **before** cloning so the model is
+> downloaded instead of a small text pointer:
+>
+> ```bash
+> git lfs install
+> ```
+>
+> If you cloned before installing Git LFS, run `git lfs pull` to fetch the model.
+
 1.  **Clone the repository:**
 
     ```bash
