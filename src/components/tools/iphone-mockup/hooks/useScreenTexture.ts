@@ -1,24 +1,33 @@
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 
-export function useScreenTexture(url: string | null | undefined): THREE.Texture | null {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+interface ScreenTexture {
+  texture: THREE.Texture;
+  aspectRatio: number; // width / height
+}
+
+export function useScreenTexture(url: string | null | undefined): ScreenTexture | null {
+  const [result, setResult] = useState<ScreenTexture | null>(null);
 
   useEffect(() => {
     if (!url) {
-      setTexture(null);
+      setResult(null);
       return;
     }
 
-    // 处理图片
     const textureLoader = new THREE.TextureLoader();
     const loadedTexture = textureLoader.load(
       url,
       (tex) => {
-        console.log('Texture loaded:', {
-          size: `${tex.image.width}x${tex.image.height}`,
-          url: url
-        });
+        const aspectRatio = tex.image.width / tex.image.height;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.flipY = true;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = true;
+        tex.anisotropy = 16;
+        tex.needsUpdate = true;
+        setResult({ texture: tex, aspectRatio });
       },
       undefined,
       (error) => {
@@ -26,24 +35,10 @@ export function useScreenTexture(url: string | null | undefined): THREE.Texture 
       }
     );
 
-    // 基本配置
-    loadedTexture.flipY = true;
-    loadedTexture.colorSpace = THREE.SRGBColorSpace;
-    // 添加高质量纹理设置
-    loadedTexture.minFilter = THREE.LinearFilter;
-    loadedTexture.magFilter = THREE.LinearFilter;
-    loadedTexture.generateMipmaps = true;
-    loadedTexture.anisotropy = 16;
-    loadedTexture.needsUpdate = true;
-
-    setTexture(loadedTexture);
-
     return () => {
-      if (texture) {
-        texture.dispose();
-      }
+      loadedTexture.dispose();
     };
   }, [url]);
 
-  return texture;
-} 
+  return result;
+}

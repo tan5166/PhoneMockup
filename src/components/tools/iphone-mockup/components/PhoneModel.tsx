@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useLoader, useThree } from '@react-three/fiber';
-import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { useScreenTexture } from '../hooks/useScreenTexture';
 
@@ -17,7 +17,7 @@ interface PhoneModelProps {
   onZRotationChange?: (deltaZ: number) => void;
 }
 
-export function PhoneModel({ 
+export function PhoneModel({
   screenshotUrl, 
   isAutoRotating,
   metalness,
@@ -30,49 +30,34 @@ export function PhoneModel({
   onZRotationChange,
 }: PhoneModelProps) {
   const modelRef = useRef<THREE.Group | null>(null);
-  const screenRef = useRef<THREE.Mesh | null>(null);
-  const texture = useScreenTexture(screenshotUrl);
+  const screenTexture = useScreenTexture(screenshotUrl);
+  const texture = screenTexture?.texture ?? null;
   const { gl, invalidate } = useThree();
-  const MODEL_SCALE = 1.0;
-  
-  // Load the phone model using OBJLoader
-  const obj = useLoader(
-    OBJLoader,
-    '/models/iPhone_16_2024_obj.obj',
+  // Load the phone model using GLTFLoader
+  const gltf = useLoader(
+    GLTFLoader,
+    '/models/iphone17pro-2.glb?v=noisland2',
     (loader) => {
-      // Set initial progress to 0
       onLoadProgress?.(0);
-
-      // Create a file loader to track the actual file download
-      const fileLoader = new THREE.FileLoader();
-      fileLoader.setResponseType('arraybuffer');
-
-      // Add event listener for download progress
-      const onProgress = (event: ProgressEvent) => {
-        if (event.lengthComputable) {
-          const progress = event.loaded / event.total;
-          onLoadProgress?.(progress);
-        }
-      };
-      
-      // Replace the loader's load method to use our file loader
       const originalLoad = loader.load.bind(loader);
       loader.load = (url: string, onLoad?: (result: any) => void, _?: (event: ProgressEvent) => void, onError?: (err: unknown) => void) => {
-        fileLoader.load(
+        originalLoad(
           url,
-          (buffer) => {
-            if (onLoad && buffer instanceof ArrayBuffer) {
-              const text = new TextDecoder().decode(buffer);
-              onLoadProgress?.(1); // Set progress to 100% when load completes
-              originalLoad(url, onLoad);
+          (result: any) => {
+            onLoadProgress?.(1);
+            onLoad?.(result);
+          },
+          (event: ProgressEvent) => {
+            if (event.lengthComputable) {
+              onLoadProgress?.(event.loaded / event.total);
             }
           },
-          onProgress,
           onError
         );
       };
     }
   );
+  const obj = gltf.scene;
   
   // 创建高质量的环境贴图
   const envMap = useMemo(() => {
@@ -162,39 +147,65 @@ export function PhoneModel({
   // 预处理模型和材质
   const processedObj = useMemo(() => {
     if (!obj) return null;
-    
+
     const clonedObj = obj.clone();
-    
-    // 设手机外壳材质
+
+    // The GLB's back (camera) faces +X and its long axis is +Z. Rotate so the
+    // screen (model -X) faces +Z toward the camera and the phone stands upright
+    // in portrait: model +Z (height) -> world +Y, model +Y (width) -> world -X.
+    clonedObj.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+    // The base rotation lands the phone front-facing but in landscape; roll it
+    // 90° about the viewing axis (world Z) to stand it upright in portrait.
+    clonedObj.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), -Math.PI / 2);
+    clonedObj.updateMatrixWorld(true);
+
+    // 机身/边框网格染成机身色；背板玻璃（Material.005）染成单独的背板色；
+    // 镜头、屏幕、玻璃、logo 等保留原始材质。
+    const shellColor = new THREE.Color('#3a4054');
+    const backPanelColor = new THREE.Color('#414759');
+    const isShellMesh = (name: string) =>
+      /backpanel|basecolor|metalframe|metal|gray|black/.test(name) &&
+      !/glass|lens|screen|logo/.test(name);
+    // 注意：GLTFLoader 会移除节点名里的点，运行时名为 "material005"（无点），
+    // 所以这里用 \.? 兼容有点/无点两种形式。
+    const isBackPanelMesh = (name: string) => /material\.?005/.test(name);
+
+    // 保留模型自带的原始材质，仅为支持环境反射的材质补上环境贴图、
+    // 按需染色，并开启阴影。
     clonedObj.traverse((child: THREE.Object3D) => {
       if (child instanceof THREE.Mesh) {
-        const material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color(0.06, 0.06, 0.06),  // 微调加深基础颜色
-          metalness: 0.95,   
-          roughness: 0.25,   // 降低粗糙度，增加光泽感
-          clearcoat: 0,      
-          clearcoatRoughness: 0,
-          reflectivity: 0.85,  
-          envMap: envMap,
-          envMapIntensity: 0.9,  // 降低环境反射强度
-          ior: 1.5,   
-          transmission: 0,
-          specularIntensity: 0.8,  
-          specularColor: new THREE.Color(0.6, 0.6, 0.6),  // 使用更柔和的高光颜色
-          thickness: 0,
-          attenuationColor: new THREE.Color(1, 1, 1),
-          sheen: 0
-        });
+        const name = child.name.toLowerCase();
+        const tintColor = isShellMesh(name)
+          ? shellColor
+          : isBackPanelMesh(name)
+            ? backPanelColor
+            : null;
+        const applyMaterial = (mat: THREE.Material) => {
+          if (
+            mat instanceof THREE.MeshStandardMaterial ||
+            mat instanceof THREE.MeshPhysicalMaterial
+          ) {
+            mat.envMap = envMap;
+            mat.envMapIntensity = 1.0;
+            if (tintColor) {
+              mat.color.copy(tintColor);
+              mat.map = null; // 移除原始贴图，让纯色生效
+            }
+            mat.needsUpdate = true;
+          }
+        };
 
-        // 确保材质正确应用
         if (Array.isArray(child.material)) {
-          child.material = Array(child.material.length).fill(material.clone());
+          child.material = child.material.map((m) => {
+            const cloned = m.clone();
+            applyMaterial(cloned);
+            return cloned;
+          });
         } else {
-          child.material = material.clone();
+          child.material = child.material.clone();
+          applyMaterial(child.material);
         }
-        
-        // 优化法线和阴影
-        child.geometry.computeVertexNormals();
+
         child.castShadow = true;
         child.receiveShadow = true;
       }
@@ -204,59 +215,113 @@ export function PhoneModel({
   
   useEffect(() => {
     if (!processedObj || !modelRef.current) return;
-    
-    const modelGroup = new THREE.Group(); 
-    modelGroup.add(processedObj.clone()); 
-    
-    const box = new THREE.Box3().setFromObject(processedObj); 
+
+    const modelGroup = new THREE.Group();
+    modelGroup.add(processedObj.clone());
+
+    const box = new THREE.Box3().setFromObject(processedObj);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    
-    modelGroup.children[0].position.sub(center); 
-    
-    const screenGroup = new THREE.Group();
-    screenGroup.name = 'screenGroup';
-    
-    // Calculate ratios based on separate padding props
-    const widthRatio = 1.0 - paddingHorizontal;
-    const heightRatio = 1.0 - paddingVertical;
-    const SCREEN_WIDTH_RATIO = widthRatio; 
-    const SCREEN_HEIGHT_RATIO = heightRatio; 
-    const SCREEN_OFFSET_Y = 0.005; 
-    const screenZFactor = 0.52; 
-    
-    const screenWidth = size.x * MODEL_SCALE * SCREEN_WIDTH_RATIO;
-    const screenHeight = size.y * MODEL_SCALE * SCREEN_HEIGHT_RATIO;
-    
-    // Create screen background geometry
-    const bgGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight, 1, 1);
-    const bgMaterial = new THREE.MeshBasicMaterial({
-        transparent: true, opacity: 0, side: THREE.FrontSide,
-        depthWrite: false, depthTest: true,
-    });
-    const bgMesh = new THREE.Mesh(bgGeometry, bgMaterial);
-    bgMesh.name = 'screenBg';
-    bgMesh.position.z = -0.001;
-    screenGroup.add(bgMesh);
 
-    // Create screen display geometry
-    const screenGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight, 1, 1);
-    const screenMaterial = new THREE.MeshBasicMaterial({
-        map: texture, // Use original texture for now
-        transparent: true,
-        opacity: texture ? 1 : 0, 
-        depthWrite: false, depthTest: true,
-        side: THREE.FrontSide, toneMapped: false,
-    });
-    const screenMesh = new THREE.Mesh(screenGeometry, screenMaterial);
-    screenRef.current = screenMesh; 
-    screenGroup.add(screenMesh);
-    
-    const screenZ = (size.z * MODEL_SCALE * screenZFactor) + 0.001;
-    screenGroup.position.set(0, SCREEN_OFFSET_Y, screenZ);
-    
-    modelGroup.add(screenGroup);
-    
+    // Auto-normalize scale so any model (OBJ mm, GLB meters, etc.) fills the scene correctly
+    const TARGET_HEIGHT = 15;
+    const autoScale = TARGET_HEIGHT / Math.max(size.x, size.y, size.z);
+    const MODEL_SCALE_EFFECTIVE = autoScale;
+    modelGroup.scale.setScalar(MODEL_SCALE_EFFECTIVE);
+
+    modelGroup.children[0].position.sub(center);
+
+    // Replace the model's built-in screen wallpaper (the `screen.001` mesh) with
+    // the uploaded screenshot so it maps perfectly onto the real screen geometry
+    // (rounded corners / cutouts) via the model's own UVs. When no screenshot is
+    // provided, the model keeps its baked wallpaper.
+    if (texture) {
+      modelGroup.traverse((child: THREE.Object3D) => {
+        if (
+          child instanceof THREE.Mesh &&
+          /screen/.test(child.name.toLowerCase()) &&
+          !/glass|lens/.test(child.name.toLowerCase())
+        ) {
+          // The screen mesh is a flat plane (constant local X, varying in Y/Z),
+          // but its baked UVs are custom-fit to the original wallpaper and would
+          // tile/distort an arbitrary screenshot. Regenerate clean planar UVs so
+          // the screenshot maps 1:1 across the screen: U <- local Y (width),
+          // V <- local Z (height).
+          const geom = child.geometry.clone();
+          const pos = geom.attributes.position;
+          let xMin = Infinity;
+          let yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
+          for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+            if (x < xMin) xMin = x;
+            if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+            if (z < zMin) zMin = z; if (z > zMax) zMax = z;
+          }
+          const ySpan = yMax - yMin || 1;
+          const zSpan = zMax - zMin || 1;
+          // Planar UV: U <- local Y (width, reversed to avoid mirror), V <- local Z (height).
+          const planarUV = (y: number, z: number): [number, number] => [
+            (yMax - y) / ySpan,
+            (z - zMin) / zSpan,
+          ];
+          const uv = new Float32Array(pos.count * 2);
+          for (let i = 0; i < pos.count; i++) {
+            const [u, v] = planarUV(pos.getY(i), pos.getZ(i));
+            uv[i * 2] = u;
+            uv[i * 2 + 1] = v;
+          }
+          geom.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+          child.geometry = geom;
+
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.flipY = true;
+          texture.needsUpdate = true;
+
+          // Unlit + untonemapped so the screen looks like a glowing display.
+          const screenMaterial = new THREE.MeshBasicMaterial({
+            map: texture,
+            toneMapped: false,
+            side: THREE.DoubleSide,
+          });
+          child.material = screenMaterial;
+
+          // The model's screen mesh has a dynamic-island cutout (a hole at the top
+          // center). The island geometry itself was removed from the GLB, so fill
+          // that hole with a small quad that shares the screen's screenshot and the
+          // exact same planar UV mapping — the pixels line up seamlessly, making the
+          // screenshot cover the whole display. Placed just behind the screen plane
+          // (+x is away from the viewer) so the screen wins in the overlap margin and
+          // the patch only shows through the actual hole, staying under the glass.
+          // Top edge is clamped to the screen's own top (zMax) so the patch never
+          // pokes out beyond the phone; the cutout sits comfortably within these bounds.
+          const yPatch0 = -0.14, yPatch1 = 0.15, zPatch0 = 0.7, zPatch1 = zMax;
+          const xPatch = xMin + 0.002;
+          const corners: [number, number][] = [
+            [yPatch0, zPatch0],
+            [yPatch1, zPatch0],
+            [yPatch1, zPatch1],
+            [yPatch0, zPatch1],
+          ];
+          const patchPos = new Float32Array(corners.length * 3);
+          const patchUV = new Float32Array(corners.length * 2);
+          corners.forEach(([y, z], i) => {
+            patchPos[i * 3] = xPatch;
+            patchPos[i * 3 + 1] = y;
+            patchPos[i * 3 + 2] = z;
+            const [u, v] = planarUV(y, z);
+            patchUV[i * 2] = u;
+            patchUV[i * 2 + 1] = v;
+          });
+          const patchGeom = new THREE.BufferGeometry();
+          patchGeom.setAttribute('position', new THREE.BufferAttribute(patchPos, 3));
+          patchGeom.setAttribute('uv', new THREE.BufferAttribute(patchUV, 2));
+          patchGeom.setIndex([0, 1, 2, 0, 2, 3]);
+          child.add(new THREE.Mesh(patchGeom, screenMaterial));
+        }
+      });
+    }
+
     // Always update modelRef.current children
     while (modelRef.current.children.length > 0) {
         modelRef.current.remove(modelRef.current.children[0]);
@@ -309,7 +374,7 @@ export function PhoneModel({
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerUp);
     };
-  }, [processedObj, gl, isDragging, previousTouch.x, previousTouch.y, invalidate, rotationSpeed, texture, paddingHorizontal, paddingVertical, onRotationChange, onZRotationChange]);
+  }, [processedObj, gl, isDragging, previousTouch.x, previousTouch.y, invalidate, rotationSpeed, texture, onRotationChange, onZRotationChange]);
 
   // 自动旋转
   useEffect(() => {
@@ -326,12 +391,5 @@ export function PhoneModel({
     }
   }, [isAutoRotating, isDragging, rotationDirection, onRotationChange]);
 
-  return (
-    <group ref={modelRef} name="phoneModelGroup">
-      <primitive 
-        object={processedObj || obj}
-        scale={[MODEL_SCALE, MODEL_SCALE, MODEL_SCALE]}
-      />
-    </group>
-  );
+  return <group ref={modelRef} name="phoneModelGroup" />;
 }

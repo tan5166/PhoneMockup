@@ -207,7 +207,7 @@ export function Scene3D({ screenshotUrl, background }: Scene3DProps) {
   const [metalness, setMetalness] = useState(0.9);
   const [roughness, setRoughness] = useState(0.2);
   // Separate padding states
-  const [paddingHorizontal, setPaddingHorizontal] = useState(0.07); // Default 93% width
+  const [paddingHorizontal, setPaddingHorizontal] = useState(0.05); // Default 95% width
   const [paddingVertical, setPaddingVertical] = useState(0.03);   // Default 97% height
   
   const [modelRotationX, setModelRotationX] = useState(0);
