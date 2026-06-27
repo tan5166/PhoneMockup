@@ -30,12 +30,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#mockup-tool" className="text-gray-600 hover:text-[#10b981] transition-colors text-sm">
+                <Link href="/#mockup-tool" className="text-gray-600 hover:text-[#10b981] transition-colors text-sm">
                   Phone Mockup
                 </Link>
               </li>
               <li>
-                <Link href="#features" className="text-gray-600 hover:text-[#10b981] transition-colors text-sm">
+                <Link href="/#features" className="text-gray-600 hover:text-[#10b981] transition-colors text-sm">
                   Features
                 </Link>
               </li>

@@ -28,7 +28,7 @@ export function Header() {
             <Link href="/" className="text-gray-700 hover:text-[#10b981] font-medium transition-colors">
               Home
             </Link>
-            <Link href="#mockup-tool" className="text-gray-700 hover:text-[#10b981] font-medium transition-colors">
+            <Link href="/#mockup-tool" className="text-gray-700 hover:text-[#10b981] font-medium transition-colors">
               Phone Mockup
             </Link>
           </nav>
