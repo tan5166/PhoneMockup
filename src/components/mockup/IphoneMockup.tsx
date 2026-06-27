@@ -39,6 +39,11 @@ export function IphoneMockup() {
 
   const handleScreenshotDelete = (id: string) => {
     setScreenshots(prev => {
+      // Release the blob URL so the object URL doesn't leak.
+      const removed = prev.find(s => s.id === id);
+      if (removed) {
+        URL.revokeObjectURL(removed.url);
+      }
       const newScreenshots = prev.filter(screenshot => screenshot.id !== id);
       // If the deleted image is the currently selected image, automatically select the first image
       if (newScreenshots.length > 0 && selectedScreenshot === prev.find(s => s.id === id)?.url) {

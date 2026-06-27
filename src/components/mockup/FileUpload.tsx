@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { UploadCloud } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
@@ -13,7 +14,7 @@ interface FileUploadProps {
 // Create rounded image function
 const createRoundedImage = (file: File): Promise<File> => {
   return new Promise((resolve) => {
-    const img = new Image();
+    const img = new window.Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -116,10 +117,14 @@ export function FileUpload({
                       : 'hover:shadow-md hover:ring-1 hover:ring-[#6ee7b7]/30'
                   }`}
                 >
-                  <img
+                  <Image
                     src={file.url}
                     alt="Screenshot preview"
-                    className="w-[100px] h-auto object-contain"
+                    width={100}
+                    height={100}
+                    unoptimized
+                    className="object-contain"
+                    style={{ width: '100px', height: 'auto' }}
                   />
                   {onFileDelete && (
                     <button

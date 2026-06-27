@@ -6,6 +6,7 @@ import Head from 'next/head';
 import Script from 'next/script';
 
 const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_ID;
+const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
 function App({ Component, pageProps }: AppProps) {
   return (
@@ -50,6 +51,17 @@ function App({ Component, pageProps }: AppProps) {
             }}
           />
         </>
+      )}
+
+      {/* Google AdSense */}
+      {ADSENSE_CLIENT_ID && (
+        <Script
+          id="google-adsense"
+          strategy="afterInteractive"
+          async
+          crossOrigin="anonymous"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`}
+        />
       )}
 
       <Component {...pageProps} />

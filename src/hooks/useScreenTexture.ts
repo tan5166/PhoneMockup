@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 import * as THREE from 'three';
 
-interface ScreenTexture {
-  texture: THREE.Texture;
-  aspectRatio: number; // width / height
-}
-
-export function useScreenTexture(url: string | null | undefined): ScreenTexture | null {
-  const [result, setResult] = useState<ScreenTexture | null>(null);
+export function useScreenTexture(url: string | null | undefined): THREE.Texture | null {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     if (!url) {
-      setResult(null);
+      setTexture(null);
       return;
     }
 
@@ -19,7 +14,6 @@ export function useScreenTexture(url: string | null | undefined): ScreenTexture 
     const loadedTexture = textureLoader.load(
       url,
       (tex) => {
-        const aspectRatio = tex.image.width / tex.image.height;
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.flipY = true;
         tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -27,7 +21,7 @@ export function useScreenTexture(url: string | null | undefined): ScreenTexture 
         tex.generateMipmaps = true;
         tex.anisotropy = 16;
         tex.needsUpdate = true;
-        setResult({ texture: tex, aspectRatio });
+        setTexture(tex);
       },
       undefined,
       (error) => {
@@ -40,5 +34,5 @@ export function useScreenTexture(url: string | null | undefined): ScreenTexture 
     };
   }, [url]);
 
-  return result;
+  return texture;
 }

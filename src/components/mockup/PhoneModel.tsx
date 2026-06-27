@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three';
@@ -26,8 +26,7 @@ export function PhoneModel({
   backPanelColor = '#414759',
 }: PhoneModelProps) {
   const modelRef = useRef<THREE.Group | null>(null);
-  const screenTexture = useScreenTexture(screenshotUrl);
-  const texture = screenTexture?.texture ?? null;
+  const texture = useScreenTexture(screenshotUrl);
   const { gl, invalidate } = useThree();
   // Load the phone model using GLTFLoader
   const gltf = useLoader(
@@ -134,11 +133,11 @@ export function PhoneModel({
     return data;
   }
   
-  // State management
-  const [isDragging, setIsDragging] = useState(false);
-  const [previousTouch, setPreviousTouch] = useState({ x: 0, y: 0 });
+  // Pointer-drag state held in refs so dragging never re-runs the
+  // (expensive) model-building effect below.
+  const isDraggingRef = useRef(false);
+  const previousTouchRef = useRef({ x: 0, y: 0 });
   const rotationSpeed = 0.003;
-  const autoRotationSpeed = 0.01;
 
   // Preprocess the model and materials
   const processedObj = useMemo(() => {
@@ -331,40 +330,41 @@ export function PhoneModel({
         modelRef.current.remove(modelRef.current.children[0]);
     }
     modelRef.current.add(modelGroup);
-    
-    invalidate(); 
 
+    invalidate();
+  }, [processedObj, invalidate, texture]);
+
+  // Pointer-drag rotation. Kept in its own effect (separate from model
+  // building) so it only re-binds when the canvas or callbacks change.
+  useEffect(() => {
     const canvas = gl.domElement;
 
     const onPointerDown = (event: PointerEvent) => {
       event.preventDefault();
-      setIsDragging(true);
-      setPreviousTouch({
-        x: event.clientX,
-        y: event.clientY
-      });
+      isDraggingRef.current = true;
+      previousTouchRef.current = { x: event.clientX, y: event.clientY };
     };
 
     const onPointerMove = (event: PointerEvent) => {
-      if (!isDragging || !onRotationChange || !onZRotationChange) return;
+      if (!isDraggingRef.current || !onRotationChange || !onZRotationChange) return;
 
-      const deltaX = event.clientY - previousTouch.y;
-      const deltaY = event.clientX - previousTouch.x;
+      const previous = previousTouchRef.current;
+      const deltaX = event.clientY - previous.y;
+      const deltaY = event.clientX - previous.x;
 
       if (event.shiftKey) {
-        const deltaZ = deltaY * rotationSpeed * 2;
-        onZRotationChange(deltaZ);
-        setPreviousTouch({ x: event.clientX, y: previousTouch.y });
+        onZRotationChange(deltaY * rotationSpeed * 2);
+        previousTouchRef.current = { x: event.clientX, y: previous.y };
       } else {
         onRotationChange(deltaX * rotationSpeed, deltaY * rotationSpeed);
-        setPreviousTouch({ x: event.clientX, y: event.clientY });
+        previousTouchRef.current = { x: event.clientX, y: event.clientY };
       }
 
       invalidate();
     };
 
     const onPointerUp = () => {
-      setIsDragging(false);
+      isDraggingRef.current = false;
     };
 
     canvas.addEventListener('pointerdown', onPointerDown);
@@ -378,22 +378,19 @@ export function PhoneModel({
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerUp);
     };
-  }, [processedObj, gl, isDragging, previousTouch.x, previousTouch.y, invalidate, rotationSpeed, texture, onRotationChange, onZRotationChange]);
+  }, [gl, invalidate, onRotationChange, onZRotationChange]);
 
-  // Auto-rotation
+  // Auto-rotation. The interval checks the drag ref each tick so a drag in
+  // progress pauses rotation without re-running this effect.
   useEffect(() => {
-    if (isAutoRotating && !isDragging) {
-      const interval = setInterval(() => {
-        if (modelRef.current) {
-          // Set the rotation speed based on the rotation direction
-          const rotationAmount = rotationDirection === 'clockwise' ? -0.01 : 0.01;
-          // Notify parent about rotation delta
-          onRotationChange?.(0, rotationAmount);
-        }
-      }, 16);
-      return () => clearInterval(interval);
-    }
-  }, [isAutoRotating, isDragging, rotationDirection, onRotationChange]);
+    if (!isAutoRotating) return;
+    const interval = setInterval(() => {
+      if (isDraggingRef.current) return;
+      const rotationAmount = rotationDirection === 'clockwise' ? -0.01 : 0.01;
+      onRotationChange?.(0, rotationAmount);
+    }, 16);
+    return () => clearInterval(interval);
+  }, [isAutoRotating, rotationDirection, onRotationChange]);
 
   return <group ref={modelRef} name="phoneModelGroup" />;
 }

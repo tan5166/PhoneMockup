@@ -4,8 +4,7 @@ import { PhoneModel } from '@/components/mockup/PhoneModel';
 import { Download, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
 
-// Add below the import statements at the top of the file
-type PresetAngleName = 'front' | 'right' | 'left' | 'reset' | 'autoRotate';
+type PresetAngleName = 'front' | 'right' | 'left';
 
 const presetPoses: { name: PresetAngleName; rotation: THREE.Euler }[] = [
   {
@@ -135,7 +134,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneHandlesRef = useRef<SceneHandles | null>(null);
   const [showBackground, setShowBackground] = useState(true);
-  const canvasSize = { width: '100%', height: 600 };
+  const CANVAS_HEIGHT = 600;
   const [shellColor, setShellColor] = useState('#3a4054');
   const [backPanelColor, setBackPanelColor] = useState('#414759');
   // Lighting control state
@@ -446,7 +445,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         ref={containerRef} 
         className="w-full bg-gray-100 relative"
         style={{
-          height: canvasSize.height,
+          height: CANVAS_HEIGHT,
         }}
       >
         {loadingProgress > 0 && loadingProgress < 1 && (
