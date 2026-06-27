@@ -22,6 +22,25 @@ const presetPoses: { name: PresetAngleName; rotation: THREE.Euler }[] = [
   }
 ];
 
+// Handles to the underlying three.js renderer/scene/camera, captured from
+// inside the Canvas so code outside the Canvas (e.g. the export handler) can
+// drive an offscreen high-resolution render.
+interface SceneHandles {
+  gl: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.Camera;
+}
+
+// Bridge component: lives inside the Canvas and publishes the three.js context
+// to a ref owned by the parent component.
+function SceneCapture({ handlesRef }: { handlesRef: { current: SceneHandles | null } }) {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    handlesRef.current = { gl, scene, camera };
+  }, [gl, scene, camera, handlesRef]);
+  return null;
+}
+
 // Camera control component
 function CameraController({ zoom }: { zoom: number }) {
   const { camera, invalidate } = useThree();
@@ -115,6 +134,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const sceneHandlesRef = useRef<SceneHandles | null>(null);
   const [showBackground, setShowBackground] = useState(true);
   const canvasSize = { width: '100%', height: 600 };
   const [shellColor, setShellColor] = useState('#3a4054');
@@ -150,101 +170,139 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
 
 
   const handleExportModel = async () => {
-    if (!canvasRef.current) return;
+    const handles = sceneHandlesRef.current;
+    if (!handles) return;
+    const { gl, scene, camera } = handles;
+
+    // Supersample factor for a crisp export, independent of the on-screen dpr.
+    const EXPORT_SCALE = 4;
+    const maxDim = gl.capabilities.maxTextureSize;
+
+    let renderTarget: THREE.WebGLRenderTarget | null = null;
 
     try {
-      // Temporarily hide the background and grid
+      // Temporarily hide the background grid so the export has a transparent bg.
       setShowBackground(false);
 
-      // Wait for rendering to finish
+      // Wait for React to re-render the scene without the grid.
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Get the current canvas content
-      const canvas = canvasRef.current;
+      const canvas = gl.domElement;
+      const cssWidth = canvas.clientWidth;
+      const cssHeight = canvas.clientHeight;
 
-      // Create a temporary canvas
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      
-      if (tempCtx) {
-        // Copy content directly from the WebGL canvas
-        tempCtx.drawImage(canvas, 0, 0);
+      // Render at EXPORT_SCALE× the display size, capped to the GPU's max
+      // texture size so we never exceed what the hardware can allocate.
+      const scale = Math.min(
+        EXPORT_SCALE,
+        maxDim / cssWidth,
+        maxDim / cssHeight
+      );
+      const rtWidth = Math.floor(cssWidth * scale);
+      const rtHeight = Math.floor(cssHeight * scale);
 
-        // Get image data to analyze the bounds
-        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-        const { data, width, height } = imageData;
+      renderTarget = new THREE.WebGLRenderTarget(rtWidth, rtHeight, {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        colorSpace: THREE.SRGBColorSpace, // match the on-screen sRGB output
+        samples: 4, // MSAA for antialiased edges in the offscreen pass
+      });
 
-        // Find the bounds of the non-transparent pixels
-        let minX = width;
-        let minY = height;
-        let maxX = 0;
-        let maxY = 0;
-        let hasContent = false;
-        
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const alpha = data[(y * width + x) * 4 + 3];
-            if (alpha > 10) { // Use a threshold to decide whether it is valid content
-              hasContent = true;
-              minX = Math.min(minX, x);
-              minY = Math.min(minY, y);
-              maxX = Math.max(maxX, x);
-              maxY = Math.max(maxY, y);
-            }
+      // Offscreen high-resolution render. The aspect ratio is unchanged (both
+      // dimensions scale equally), so the camera projection needs no update.
+      gl.setRenderTarget(renderTarget);
+      gl.clear();
+      gl.render(scene, camera);
+
+      // Read the pixels (WebGL is bottom-up) and flip vertically into an
+      // RGBA buffer suitable for a 2D canvas (top-down).
+      const pixels = new Uint8Array(rtWidth * rtHeight * 4);
+      gl.readRenderTargetPixels(renderTarget, 0, 0, rtWidth, rtHeight, pixels);
+      gl.setRenderTarget(null);
+
+      const flipped = new Uint8ClampedArray(rtWidth * rtHeight * 4);
+      const rowBytes = rtWidth * 4;
+      for (let y = 0; y < rtHeight; y++) {
+        const srcStart = (rtHeight - 1 - y) * rowBytes;
+        flipped.set(pixels.subarray(srcStart, srcStart + rowBytes), y * rowBytes);
+      }
+
+      const fullCanvas = document.createElement('canvas');
+      fullCanvas.width = rtWidth;
+      fullCanvas.height = rtHeight;
+      const fullCtx = fullCanvas.getContext('2d');
+      if (!fullCtx) return;
+      fullCtx.putImageData(new ImageData(flipped, rtWidth, rtHeight), 0, 0);
+
+      // Find the bounds of the non-transparent pixels.
+      const { data, width, height } = fullCtx.getImageData(0, 0, rtWidth, rtHeight);
+      let minX = width;
+      let minY = height;
+      let maxX = 0;
+      let maxY = 0;
+      let hasContent = false;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const alpha = data[(y * width + x) * 4 + 3];
+          if (alpha > 10) { // Use a threshold to decide whether it is valid content
+            hasContent = true;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
           }
         }
-        
-        if (!hasContent) {
-          console.error('No content found in the canvas');
-          setShowBackground(true);
-          return;
-        }
-        
-        // Add some padding
-        const padding = 20;
-        minX = Math.max(0, minX - padding);
-        minY = Math.max(0, minY - padding);
-        maxX = Math.min(width, maxX + padding);
-        maxY = Math.min(height, maxY + padding);
-        
-        // Create a new canvas and draw the cropped content
-        const croppedCanvas = document.createElement('canvas');
-        const cropWidth = maxX - minX;
-        const cropHeight = maxY - minY;
-        croppedCanvas.width = cropWidth;
-        croppedCanvas.height = cropHeight;
-        
-        const croppedCtx = croppedCanvas.getContext('2d');
-        if (croppedCtx) {
-          // Ensure the canvas background is transparent
-          croppedCtx.clearRect(0, 0, cropWidth, cropHeight);
-
-          // Copy the cropped region
-          croppedCtx.drawImage(
-            tempCanvas,
-            minX, minY, cropWidth, cropHeight,
-            0, 0, cropWidth, cropHeight
-          );
-          
-          // Export the cropped image
-          const dataUrl = croppedCanvas.toDataURL('image/png', 1.0);
-
-          // Create a download link
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          link.download = 'phone-model.png';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
       }
-      
-      // Restore the background and grid
-      setShowBackground(true);
+
+      if (!hasContent) {
+        console.error('No content found in the canvas');
+        return;
+      }
+
+      // Add padding, scaled to keep the same visual margin as on screen.
+      const padding = Math.round(20 * scale);
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      maxX = Math.min(width, maxX + padding);
+      maxY = Math.min(height, maxY + padding);
+
+      // Create a new canvas and draw the cropped content.
+      const croppedCanvas = document.createElement('canvas');
+      const cropWidth = maxX - minX;
+      const cropHeight = maxY - minY;
+      croppedCanvas.width = cropWidth;
+      croppedCanvas.height = cropHeight;
+
+      const croppedCtx = croppedCanvas.getContext('2d');
+      if (croppedCtx) {
+        // Ensure the canvas background is transparent.
+        croppedCtx.clearRect(0, 0, cropWidth, cropHeight);
+
+        // Copy the cropped region.
+        croppedCtx.drawImage(
+          fullCanvas,
+          minX, minY, cropWidth, cropHeight,
+          0, 0, cropWidth, cropHeight
+        );
+
+        // Export the cropped image.
+        const dataUrl = croppedCanvas.toDataURL('image/png', 1.0);
+
+        // Create a download link.
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'phone-model.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (error) {
       console.error('Error exporting model:', error);
+    } finally {
+      // Always restore renderer state, free GPU memory, and show the grid.
+      gl.setRenderTarget(null);
+      renderTarget?.dispose();
       setShowBackground(true);
     }
   };
@@ -408,7 +466,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         
         <Canvas
           ref={canvasRef}
-          dpr={[1, 2]}
+          dpr={[1, 3]}
           camera={{ position: [0, 0, 80], fov: 20 }}
           gl={{
             antialias: true,
@@ -431,6 +489,7 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
           frameloop={isAutoRotating ? 'always' : 'demand'}
         >
           <Suspense fallback={null}>
+            <SceneCapture handlesRef={sceneHandlesRef} />
             <CameraController zoom={zoom} />
             <ModelAnimationController 
               rotationX={modelRotationX}
