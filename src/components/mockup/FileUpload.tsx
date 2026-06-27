@@ -44,6 +44,9 @@ const createRoundedImage = (file: File): Promise<File> => {
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       }
       
+      // Release the object URL now that the image has been drawn.
+      URL.revokeObjectURL(img.src);
+
       // Convert to blob and create new File
       canvas.toBlob((blob) => {
         if (blob) {
@@ -52,7 +55,7 @@ const createRoundedImage = (file: File): Promise<File> => {
         }
       }, 'image/png');
     };
-    
+
     img.src = URL.createObjectURL(file);
   });
 };

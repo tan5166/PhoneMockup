@@ -1,7 +1,6 @@
 import { NextPage } from 'next';
 import Head from 'next/head';
-import { Footer } from '@/components/layout/Footer';
-import { Header } from '@/components/layout/Header';
+import { PageLayout } from '@/components/layout/PageLayout';
 import { ExternalLink, Github } from 'lucide-react';
 
 const LicensePage: NextPage = () => {
@@ -15,9 +14,7 @@ const LicensePage: NextPage = () => {
         />
       </Head>
 
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Header />
-
+      <PageLayout className="min-h-screen bg-gray-50 flex flex-col">
         <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 py-16 w-full">
           <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8 md:p-12">
             {/* Attribution */}
@@ -76,9 +73,7 @@ const LicensePage: NextPage = () => {
             </div>
           </div>
         </main>
-
-        <Footer />
-      </div>
+      </PageLayout>
     </>
   );
 };

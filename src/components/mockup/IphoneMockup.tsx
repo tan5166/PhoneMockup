@@ -1,7 +1,7 @@
 'use client';
 
 import { Smartphone } from 'lucide-react';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Scene3D } from '@/components/mockup/Scene3D';
 import { FileUpload } from '@/components/mockup/FileUpload';
 import { v4 as uuidv4 } from 'uuid';

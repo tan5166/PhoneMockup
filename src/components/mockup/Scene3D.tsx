@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { PhoneModel } from '@/components/mockup/PhoneModel';
 import { Download, Save, Trash2 } from 'lucide-react';
 import * as THREE from 'three';
+import { exportSceneAsPng, type SceneHandles } from '@/lib/sceneExport';
 
 type PresetAngleName = 'front' | 'right' | 'left';
 
@@ -20,15 +21,6 @@ const presetPoses: { name: PresetAngleName; rotation: THREE.Euler }[] = [
     rotation: new THREE.Euler(0, -Math.PI / 12, -Math.PI / 24) // Y axis -15deg, Z axis -7.5deg
   }
 ];
-
-// Handles to the underlying three.js renderer/scene/camera, captured from
-// inside the Canvas so code outside the Canvas (e.g. the export handler) can
-// drive an offscreen high-resolution render.
-interface SceneHandles {
-  gl: THREE.WebGLRenderer;
-  scene: THREE.Scene;
-  camera: THREE.Camera;
-}
 
 // Bridge component: lives inside the Canvas and publishes the three.js context
 // to a ref owned by the parent component.
@@ -170,13 +162,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const handleExportModel = async () => {
     const handles = sceneHandlesRef.current;
     if (!handles) return;
-    const { gl, scene, camera } = handles;
-
-    // Supersample factor for a crisp export, independent of the on-screen dpr.
-    const EXPORT_SCALE = 4;
-    const maxDim = gl.capabilities.maxTextureSize;
-
-    let renderTarget: THREE.WebGLRenderTarget | null = null;
 
     try {
       // Temporarily hide the background grid so the export has a transparent bg.
@@ -185,122 +170,24 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
       // Wait for React to re-render the scene without the grid.
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const canvas = gl.domElement;
-      const cssWidth = canvas.clientWidth;
-      const cssHeight = canvas.clientHeight;
+      // Build a timestamped filename, e.g. phone-mockup-20260627153012.png.
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const stamp =
+        `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+        `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
-      // Render at EXPORT_SCALE× the display size, capped to the GPU's max
-      // texture size so we never exceed what the hardware can allocate.
-      const scale = Math.min(
-        EXPORT_SCALE,
-        maxDim / cssWidth,
-        maxDim / cssHeight
-      );
-      const rtWidth = Math.floor(cssWidth * scale);
-      const rtHeight = Math.floor(cssHeight * scale);
-
-      renderTarget = new THREE.WebGLRenderTarget(rtWidth, rtHeight, {
-        minFilter: THREE.LinearFilter,
-        magFilter: THREE.LinearFilter,
-        colorSpace: THREE.SRGBColorSpace, // match the on-screen sRGB output
-        samples: 4, // MSAA for antialiased edges in the offscreen pass
+      const exported = exportSceneAsPng(handles, {
+        filename: `phone-mockup-${stamp}.png`,
       });
-
-      // Offscreen high-resolution render. The aspect ratio is unchanged (both
-      // dimensions scale equally), so the camera projection needs no update.
-      gl.setRenderTarget(renderTarget);
-      gl.clear();
-      gl.render(scene, camera);
-
-      // Read the pixels (WebGL is bottom-up) and flip vertically into an
-      // RGBA buffer suitable for a 2D canvas (top-down).
-      const pixels = new Uint8Array(rtWidth * rtHeight * 4);
-      gl.readRenderTargetPixels(renderTarget, 0, 0, rtWidth, rtHeight, pixels);
-      gl.setRenderTarget(null);
-
-      const flipped = new Uint8ClampedArray(rtWidth * rtHeight * 4);
-      const rowBytes = rtWidth * 4;
-      for (let y = 0; y < rtHeight; y++) {
-        const srcStart = (rtHeight - 1 - y) * rowBytes;
-        flipped.set(pixels.subarray(srcStart, srcStart + rowBytes), y * rowBytes);
-      }
-
-      const fullCanvas = document.createElement('canvas');
-      fullCanvas.width = rtWidth;
-      fullCanvas.height = rtHeight;
-      const fullCtx = fullCanvas.getContext('2d');
-      if (!fullCtx) return;
-      fullCtx.putImageData(new ImageData(flipped, rtWidth, rtHeight), 0, 0);
-
-      // Find the bounds of the non-transparent pixels.
-      const { data, width, height } = fullCtx.getImageData(0, 0, rtWidth, rtHeight);
-      let minX = width;
-      let minY = height;
-      let maxX = 0;
-      let maxY = 0;
-      let hasContent = false;
-
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const alpha = data[(y * width + x) * 4 + 3];
-          if (alpha > 10) { // Use a threshold to decide whether it is valid content
-            hasContent = true;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
-          }
-        }
-      }
-
-      if (!hasContent) {
+      if (!exported) {
         console.error('No content found in the canvas');
-        return;
-      }
-
-      // Add padding, scaled to keep the same visual margin as on screen.
-      const padding = Math.round(20 * scale);
-      minX = Math.max(0, minX - padding);
-      minY = Math.max(0, minY - padding);
-      maxX = Math.min(width, maxX + padding);
-      maxY = Math.min(height, maxY + padding);
-
-      // Create a new canvas and draw the cropped content.
-      const croppedCanvas = document.createElement('canvas');
-      const cropWidth = maxX - minX;
-      const cropHeight = maxY - minY;
-      croppedCanvas.width = cropWidth;
-      croppedCanvas.height = cropHeight;
-
-      const croppedCtx = croppedCanvas.getContext('2d');
-      if (croppedCtx) {
-        // Ensure the canvas background is transparent.
-        croppedCtx.clearRect(0, 0, cropWidth, cropHeight);
-
-        // Copy the cropped region.
-        croppedCtx.drawImage(
-          fullCanvas,
-          minX, minY, cropWidth, cropHeight,
-          0, 0, cropWidth, cropHeight
-        );
-
-        // Export the cropped image.
-        const dataUrl = croppedCanvas.toDataURL('image/png', 1.0);
-
-        // Create a download link.
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = 'phone-model.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       }
     } catch (error) {
       console.error('Error exporting model:', error);
     } finally {
-      // Always restore renderer state, free GPU memory, and show the grid.
-      gl.setRenderTarget(null);
-      renderTarget?.dispose();
+      // Always restore the background grid (renderer state is restored inside
+      // the export helper).
       setShowBackground(true);
     }
   };

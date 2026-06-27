@@ -1,74 +1,16 @@
 import { NextPage } from 'next';
-import Head from 'next/head';
-import { Footer } from '@/components/layout/Footer';
-import { Header } from '@/components/layout/Header';
-import { JsonLd } from '@/components/JsonLd';
-import dynamic from 'next/dynamic';
+import { Seo } from '@/components/Seo';
+import { PageLayout } from '@/components/layout/PageLayout';
+import { IphoneMockupClient } from '@/components/mockup/IphoneMockupClient';
+import { mockupSeo, mockupStructuredData } from '@/lib/seo';
 import { ArrowRight, ExternalLink, Smartphone, Monitor, Wifi, Cloud, Download, Check, Zap, Shield } from 'lucide-react';
 
-// Dynamic import of client-side component
-const IphoneMockup = dynamic(
-  () => import('@/components/mockup/IphoneMockup').then(mod => mod.IphoneMockup),
-  { ssr: false }
-);
-
 const HomePage: NextPage = () => {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Phone Mockup Generator",
-    "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD",
-      "availability": "http://schema.org/InStock"
-    },
-    "description": "Create stunning 3D Phone mockups for your app screenshots. Perfect for App Store listings, marketing materials, and presentations.",
-    "featureList": [
-      "Interactive 3D preview",
-      "Multiple device frames",
-      "High-quality rendering",
-      "Easy screenshot upload",
-      "Instant preview",
-      "Free to use",
-      "No watermarks"
-    ],
-    "applicationSubCategory": "Design Tools",
-    "softwareVersion": "1.0",
-    "inLanguage": "en"
-  };
-
   return (
     <>
-      <Head>
-        <title>Phone Mockup Generator | Free 3D Mobile Device Mockups</title>
-        <meta 
-          name="description" 
-          content="Create stunning 3D Phone mockups for your app screenshots. Our free Phone Mockup tool is perfect for marketing materials, App Store listings, and presentations."
-        />
-        <meta 
-          name="keywords" 
-          content="phone mockup, mobile mockup, 3D mockup tool, app screenshot generator, ios mockup creator, android mockup, free mockup generator, phone frame, device mockup"
-        />
-        <meta name="language" content="en" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta property="og:title" content="Phone Mockup Generator | Free 3D Mobile Device Mockups" />
-        <meta property="og:description" content="Create stunning 3D Phone mockups for your app screenshots. Our free Phone Mockup tool is perfect for marketing materials, App Store listings, and presentations." />
-        <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Phone Mockup Generator | Free 3D Mobile Device Mockups" />
-        <meta name="twitter:description" content="Create stunning 3D Phone mockups for your app screenshots. Our free Phone Mockup tool is perfect for marketing materials, App Store listings, and presentations." />
-        <meta name="robots" content="index, follow" />
-        <meta name="author" content="Phone Mockup" />
-      </Head>
+      <Seo {...mockupSeo} structuredData={mockupStructuredData} />
 
-      <JsonLd data={structuredData} />
-
-      <div className="min-h-screen bg-[#f8f9fa]">
-        <Header />
-        
+      <PageLayout>
         {/* Hero Section with full-width text layout */}
         <div className="bg-[#1c1f23] text-white py-16 md:py-24 overflow-hidden">
           <div className="max-w-screen-xl mx-auto px-4 md:px-8">
@@ -136,7 +78,7 @@ const HomePage: NextPage = () => {
             </div>
             
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-              <IphoneMockup />
+              <IphoneMockupClient />
             </div>
           </div>
         </div>
@@ -334,9 +276,7 @@ const HomePage: NextPage = () => {
             </a>
           </div>
         </div>
-
-        <Footer />
-      </div>
+      </PageLayout>
     </>
   );
 };
