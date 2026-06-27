@@ -81,7 +81,10 @@ function ModelAnimationController({
   const { scene, invalidate } = useThree();
   const phoneModel = scene.getObjectByName('phoneModelGroup');
   
-  // Temporarily disable animation, directly set properties
+  // Temporarily disable animation, directly set properties.
+  // Three.js exposes an imperative, mutation-based API, so writing to the
+  // scene object is the intended usage here (not a React immutability issue).
+  // eslint-disable-next-line react-hooks/immutability
   useEffect(() => {
     if (phoneModel) {
       phoneModel.rotation.x = rotationX;
@@ -146,6 +149,10 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         const parsedPresets = JSON.parse(storedPresets);
         // Basic validation
         if (Array.isArray(parsedPresets)) {
+           // localStorage is client-only, so presets must be hydrated after
+           // mount rather than via lazy useState init (which would run during
+           // static-export prerendering where localStorage is undefined).
+           // eslint-disable-next-line react-hooks/set-state-in-effect
            setSavedPresets(parsedPresets);
         } else {
            console.error("Invalid presets found in localStorage:", parsedPresets);

@@ -6,7 +6,6 @@ export function useScreenTexture(url: string | null | undefined): THREE.Texture 
 
   useEffect(() => {
     if (!url) {
-      setTexture(null);
       return;
     }
 
@@ -31,8 +30,12 @@ export function useScreenTexture(url: string | null | undefined): THREE.Texture 
 
     return () => {
       loadedTexture.dispose();
+      // Drop the reference so a later reload never renders a disposed texture.
+      setTexture(null);
     };
   }, [url]);
 
-  return texture;
+  // Derive the returned value instead of syncing it via setState in the effect:
+  // when there is no url the texture is always null.
+  return url ? texture : null;
 }
