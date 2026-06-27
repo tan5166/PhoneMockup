@@ -132,7 +132,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
   const [positionX, setPositionX] = useState(0);
   const [positionY, setPositionY] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneHandlesRef = useRef<SceneHandles | null>(null);
   const [showBackground, setShowBackground] = useState(true);
@@ -465,7 +464,6 @@ export function Scene3D({ screenshotUrl }: Scene3DProps) {
         )}
         
         <Canvas
-          ref={canvasRef}
           dpr={[1, 3]}
           camera={{ position: [0, 0, 80], fov: 20 }}
           gl={{
